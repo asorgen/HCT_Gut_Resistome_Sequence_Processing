@@ -9,9 +9,9 @@
 ##SBATCH --output=LOGS/gzipFiles.%A.log
 
 # Usage:
-# sbatch gzipFiles.sh HCT_ARG_Analysis/SHORT/clean_reads fastq
-# sbatch --job-name=UNC-gzip --output=HCT_ARG_Analysis/UNC-BMT/LOGs/gzipFiles.%A.log HCT_ARG_Analysis/SHORT/scripts/helper_scripts/gzipFiles.sh $uncFolder fastq
-# sbatch --job-name=short-gzip --output=HCT_ARG_Analysis/SHORT/LOGs/gzipFiles.%A.log HCT_ARG_Analysis/SHORT/scripts/helper_scripts/gzipFiles.sh $folder fastq
+# sbatch gzipFiles.sh HCT_Gut_Resistome_Pipeline/SHORT/clean_reads fastq
+# sbatch --job-name=UNC-gzip --output=HCT_Gut_Resistome_Pipeline/UNC-BMT/LOGs/gzipFiles.%A.log HCT_Gut_Resistome_Pipeline/SHORT/scripts/helper_scripts/gzipFiles.sh $uncFolder fastq
+# sbatch --job-name=short-gzip --output=HCT_Gut_Resistome_Pipeline/SHORT/LOGs/gzipFiles.%A.log HCT_Gut_Resistome_Pipeline/SHORT/scripts/helper_scripts/gzipFiles.sh $folder fastq
 
 directory=$1
 fileType=$2

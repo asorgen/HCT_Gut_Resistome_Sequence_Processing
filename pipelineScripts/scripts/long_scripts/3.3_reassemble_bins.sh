@@ -8,7 +8,7 @@
 #SBATCH --mail-user=asorgen@uncc.edu
 ##SBATCH --mail-type=END,FAIL
 #SBATCH --job-name=test
-#SBATCH --output=/projects/afodor_research3/asorgen/HCT_ARG_Analysis/LONG/${moduleDir}/D21309D29/testing.log
+#SBATCH --output=/projects/afodor_research3/asorgen/HCT_Gut_Resistome_Pipeline/LONG/${moduleDir}/D21309D29/testing.log
 
 # H1 "Job Context"
     OMP_NUM_THREADS=$SLURM_NTASKS
@@ -34,7 +34,7 @@
 	comment () { print_header.py "$1" "#"; }
 
 
-# cd /projects/afodor_research3/asorgen/HCT_ARG_Analysis/LONG
+# cd /projects/afodor_research3/asorgen/HCT_Gut_Resistome_Pipeline/LONG
 
 module load anaconda3/2023.09
 source ~/.bashrc

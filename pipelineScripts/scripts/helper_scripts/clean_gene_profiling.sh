@@ -89,7 +89,7 @@ EOF
 	fi
 
 
-root=/projects/afodor_research3/asorgen/HCT_ARG_Analysis
+root=/projects/afodor_research3/asorgen/HCT_Gut_Resistome_Pipeline
 # pipelines=(Duke_short Duke_long Duke_hybrid UNC_short)
 
 for pipeline in "${pipelines[@]}"; do

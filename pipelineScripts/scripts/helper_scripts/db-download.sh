@@ -48,7 +48,7 @@
 	SECONDS=0
 
 # GTDB-tk database download
-	ROOT=/projects/afodor_research3/asorgen/HCT_ARG_Analysis
+	ROOT=/projects/afodor_research3/asorgen/HCT_Gut_Resistome_Pipeline
 	if [[ ! -d ${ROOT}/databases/GTDBtk/release220 ]]; then
 	    H2 "GTDB-tk database download"
 
