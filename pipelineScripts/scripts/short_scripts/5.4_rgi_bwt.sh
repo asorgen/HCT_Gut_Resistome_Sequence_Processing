@@ -99,7 +99,7 @@ if [[ ! -f "${outputFile}" ]]; then
     miniforge_init=/users/asorgen/miniforge3/etc/profile.d/conda.sh
     RGI_ENV=/users/asorgen/miniforge3/envs/rgi
     CARD_DB=/scratch/asorgen/RGI_databases/rgi_4.0.1
-    datasetROOT=/projects/afodor_research3/asorgen/HCT_Gut_Resistome_Pipeline/UNC_short
+    datasetROOT=/projects/afodor_research3/asorgen/HCT_Gut_Resistome_Pipeline/sequence_processing/UNC_short
     clean_readDir=0.4_host_decontamination
 
     cd $CARD_DB
