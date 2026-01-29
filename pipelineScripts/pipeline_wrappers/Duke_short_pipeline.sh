@@ -188,419 +188,366 @@ cd $ROOT/${dataset}
         if [[ $count -ge 2 ]]; then continue; fi
 
         ##- 0.1 Pre-QC
+            if $run_pre_qc; then
+                module_setup 0.1_pre_qc.sh
 
-            module_setup 0.1_pre_qc.sh
-
-            # Module inputs -------------
-            header3="Pre-QC"
-            DEPENDENT_JOB=(COMPLETE)
-            hpc_opts=$pre_qc_opts
-            pipeline_tag=pre_qc
-            # ---------------------------
-
-
-            # Module specific -----------
-            export raw_readDir=0.0_raw_reads
-            if [[ ! -d ${raw_readDir} ]]; then mkdir -p $raw_readDir; fi
-
-            export pre_qcDir=$moduleDir
-
-            export R1_ext
-            export R2_ext
-            # ---------------------------
-            
-            run_module
-            PRE_QC_JOB=$Current_Job        
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+                # Module inputs -------------
+                header3="Pre-QC"
+                DEPENDENT_JOB=(COMPLETE)
+                hpc_opts=$pre_qc_opts
+                pipeline_tag=pre_qc
+                export raw_readDir=0.0_raw_reads
+                if [[ ! -d ${raw_readDir} ]]; then mkdir -p $raw_readDir; fi
+                export pre_qcDir=$moduleDir
+                export R1_ext
+                export R2_ext
+                # ---------------------------
+                
+                run_module
+                PRE_QC_JOB=$Current_Job        
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
         ##- 0.2 Deduplication
+            if $run_dedup; then 
+                module_setup 0.2_deduplication.sh
 
-            module_setup 0.2_deduplication.sh
-
-            # Module inputs -------------
-            header3="Deduplication"
-            DEPENDENT_JOB=(${PRE_QC_JOB##* })
-            hpc_opts=$dedup_opts
-            pipeline_tag=dedup
-            # ---------------------------
-
-
-            # Module specific -----------
-            export dedup_Dir=$moduleDir
-            # ---------------------------
-            
-            run_module
-            DEDUP_JOB=$Current_Job        
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+                # Module inputs -------------
+                header3="Deduplication"
+                DEPENDENT_JOB=(${PRE_QC_JOB##* })
+                hpc_opts=$dedup_opts
+                pipeline_tag=dedup
+                export dedup_Dir=$moduleDir
+                # ---------------------------
+                
+                run_module
+                DEDUP_JOB=$Current_Job        
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
         ##- 0.3 Sequence Trimming
+            if $run_trim; then
+                module_setup 0.3_sequence_trim.sh
 
-            module_setup 0.3_sequence_trim.sh
-
-            # Module inputs -------------
-            header3="Sequence Trimming"
-            DEPENDENT_JOB=(${DEDUP_JOB##* })
-            hpc_opts=$trim_opts
-            pipeline_tag=trim
-            # ---------------------------
-
-
-            # Module specific -----------
-            export trimmed_Dir=$moduleDir
-            # ---------------------------
-            
-            run_module
-            TRIM_JOB=$Current_Job        
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+                # Module inputs -------------
+                header3="Sequence Trimming"
+                DEPENDENT_JOB=(${DEDUP_JOB##* })
+                hpc_opts=$trim_opts
+                pipeline_tag=trim
+                export trimmed_Dir=$moduleDir
+                # ---------------------------
+                
+                run_module
+                TRIM_JOB=$Current_Job        
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
         ##- 0.4 Host Decontamination
+            if $run_decontam; then
+                module_setup 0.4_host_decontamination.sh
 
-            module_setup 0.4_host_decontamination.sh
-
-            # Module inputs -------------
-            header3="Host Decontamination"
-            DEPENDENT_JOB=(${TRIM_JOB##* })
-            hpc_opts=$decontam_opts
-            pipeline_tag=decontam
-            # ---------------------------
-
-
-            # Module specific -----------
-            export clean_readDir=$moduleDir
-            # ---------------------------
-            
-            run_module
-            DECONTAM_JOB=$Current_Job    
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+                # Module inputs -------------
+                header3="Host Decontamination"
+                DEPENDENT_JOB=(${TRIM_JOB##* })
+                hpc_opts=$decontam_opts
+                pipeline_tag=decontam
+                export clean_readDir=$moduleDir
+                # ---------------------------
+                
+                run_module
+                DECONTAM_JOB=$Current_Job    
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
         ##- 1.1 Assembly
+            if $run_asm; then
+                module_setup 1.1_assembly.sh
 
-            module_setup 1.1_assembly.sh
-
-            # Module inputs -------------
-            header3="Assembly"
-            DEPENDENT_JOB=(${DECONTAM_JOB##* })
-            hpc_opts=$asm_opts
-            pipeline_tag=assembly
-            # ---------------------------
-
-
-            # Module specific -----------
-            export assemblyDir=$moduleDir
-            # ---------------------------
-            
-            run_module
-            ASSEMBLY_JOB=$Current_Job    
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+                # Module inputs -------------
+                header3="Assembly"
+                DEPENDENT_JOB=(${DECONTAM_JOB##* })
+                hpc_opts=$asm_opts
+                pipeline_tag=assembly
+                export assemblyDir=$moduleDir
+                # ---------------------------
+                
+                run_module
+                ASSEMBLY_JOB=$Current_Job    
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
         ##- 1.2 Evaluation
+            if $run_eval; then
+                module_setup 1.2_evaluation.sh
 
-            module_setup 1.2_evaluation.sh
-
-            # Module inputs -------------
-            header3="Evaluation"
-            DEPENDENT_JOB=(${ASSEMBLY_JOB##* })
-            hpc_opts=$eval_opts
-            pipeline_tag=evaluation
-            # ---------------------------
-
-
-            # Module specific -----------
-            export evaluationDir=$moduleDir
-            # ---------------------------
-            
-            run_module
-            EVALUATION_JOB=$Current_Job    
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+                # Module inputs -------------
+                header3="Evaluation"
+                DEPENDENT_JOB=(${ASSEMBLY_JOB##* })
+                hpc_opts=$eval_opts
+                pipeline_tag=evaluation
+                export evaluationDir=$moduleDir
+                # ---------------------------
+                
+                run_module
+                EVALUATION_JOB=$Current_Job    
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
         ##- 2.1 Kraken2
+            if $run_k2; then
+                module_setup 2.1_kraken2.sh
 
-            module_setup 2.1_kraken2.sh
-
-            # Module specific -------------------
-            header3="Kraken2"
-            DEPENDENT_JOB=(${DECONTAM_JOB##* })
-            hpc_opts=$k2_opts
-            pipeline_tag=kraken2
-            # -----------------------------------
-
-            # Module specific actions -----------
-            export krakenDir=$moduleDir
-            export brackenDir=2.2_bracken
-            if [[ ! -d $brackenDir ]]; then mkdir -p $brackenDir; fi
-            # -----------------------------------
-
-            
-            run_module 
-            KRAKEN_JOB=$Current_Job        
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+                # Module specific -------------------
+                header3="Kraken2"
+                DEPENDENT_JOB=(${DECONTAM_JOB##* })
+                hpc_opts=$k2_opts
+                pipeline_tag=kraken2
+                export krakenDir=$moduleDir
+                export brackenDir=2.2_bracken
+                if [[ ! -d $brackenDir ]]; then mkdir -p $brackenDir; fi
+                # -----------------------------------
+                
+                run_module 
+                KRAKEN_JOB=$Current_Job        
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
         ##- 2.3 MetaPhlAn4
-            
-            module_setup 2.3_metaphlan4.sh
-            
-            # Module specific -------------------
-            header3="MetaPhlAn4"
-            DEPENDENT_JOB=(${DECONTAM_JOB##* })
-            hpc_opts=$m4_opts
-            pipeline_tag=metaphlan4
-            
-            
-            # Module specific -----------
-            export metaphlanDir=$moduleDir
-            # ---------------------------
-            
-            run_module
-            METAPHLAN_JOB=$Current_Job
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            if $run_m4; then
+                module_setup 2.3_metaphlan4.sh
+                
+                # Module specific -------------
+                header3="MetaPhlAn4"
+                DEPENDENT_JOB=(${DECONTAM_JOB##* })
+                hpc_opts=$m4_opts
+                pipeline_tag=metaphlan4
+                export metaphlanDir=$moduleDir
+                # ----------------------------
+                
+                run_module
+                METAPHLAN_JOB=$Current_Job
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
         ##- 3.1 Binning
-            
-            module_setup 3.1_binning.sh
-            
-            # Module specific -------------------
-            header3="Binning"
-            DEPENDENT_JOB=(${EVALUATION_JOB##* })
-            hpc_opts=$bin_opts
-            pipeline_tag=binning
-            
-            
-            # Module specific -----------
-            export binningDir=$moduleDir
-            # ---------------------------
-            
-            run_module
-            BINNING_JOB=$Current_Job
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            if $run_bin; then
+                module_setup 3.1_binning.sh
+                
+                # Module specific -------------------
+                header3="Binning"
+                DEPENDENT_JOB=(${EVALUATION_JOB##* })
+                hpc_opts=$bin_opts
+                pipeline_tag=binning
+                export binningDir=$moduleDir
+                # ---------------------------
+                
+                run_module
+                BINNING_JOB=$Current_Job
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
         ##- 3.2 Refine Bins
-            
-            module_setup 3.2_refine_bins.sh
-            
-            # Module specific -------------------
-            header3="Refine Bins"
-            DEPENDENT_JOB=(${BINNING_JOB##* })
-            hpc_opts=$refine_opts
-            pipeline_tag=refine
-            
-            
-            # Module specific -----------
-            export refinedbinDir=$moduleDir
-            export min_completion; export max_contam
-            # ---------------------------
-            
-            run_module
-            REFINE_JOB=$Current_Job
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            if $run_refine; then
+                module_setup 3.2_refine_bins.sh
+                
+                # Module specific -------------------
+                header3="Refine Bins"
+                DEPENDENT_JOB=(${BINNING_JOB##* })
+                hpc_opts=$refine_opts
+                pipeline_tag=refine
+                export refinedbinDir=$moduleDir
+                export min_completion; export max_contam
+                # ---------------------------
+                
+                run_module
+                REFINE_JOB=$Current_Job
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
         ##- 3.3 Reassemble bins
-            
-            module_setup 3.3_reassemble_bins.sh
-            
-            # Module specific -------------------
-            header3="Reassemble bins"
-            DEPENDENT_JOB=(${REFINE_JOB##* })
-            hpc_opts=$reassem_opts
-            pipeline_tag=reassemble
-            
-            
-            # Module specific -----------
-            export reassemDir=$moduleDir
-            # ---------------------------
-            
-            run_module
-            REASSEMBLE_JOB=$Current_Job
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            if $run_reassem; then
+                module_setup 3.3_reassemble_bins.sh
+                
+                # Module specific -------------------
+                header3="Reassemble bins"
+                DEPENDENT_JOB=(${REFINE_JOB##* })
+                hpc_opts=$reassem_opts
+                pipeline_tag=reassemble
+                export reassemDir=$moduleDir
+                # ---------------------------
+                
+                run_module
+                REASSEMBLE_JOB=$Current_Job
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
         ##- 4.1 Classify bins
-            
-            module_setup 4.1_classify_bins.sh
-            
-            # Module specific -------------------
-            header3="Classify bins"
-            DEPENDENT_JOB=(${REASSEMBLE_JOB##* })
-            hpc_opts=$classify_opts
-            pipeline_tag=classify
-            
-            
-            # Module specific -----------
-            # ---------------------------
-            
-            run_module
-            ANNOTATE_JOB=$Current_Job
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            if $run_classify; then
+                module_setup 4.1_classify_bins.sh
+                
+                # Module specific -------------------
+                header3="Classify bins"
+                DEPENDENT_JOB=(${REASSEMBLE_JOB##* })
+                hpc_opts=$classify_opts
+                pipeline_tag=classify
+                #------------------------------------
+                
+                run_module
+                ANNOTATE_JOB=$Current_Job
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
         ##- 4.2 Annotate bins
-            
-            module_setup 4.2_annotate_bins.sh
-            
-            # Module specific -------------------
-            header3="Annotate bins"
-            DEPENDENT_JOB=(${REASSEMBLE_JOB##* })
-            hpc_opts=$annotate_opts
-            pipeline_tag=annotate
-            
-            
-            # Module specific -----------
-            # ---------------------------
-            
-            run_module
-            ANNOTATE_JOB=$Current_Job
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            if $run_annotate; then
+                module_setup 4.2_annotate_bins.sh
+                
+                # Module specific -------------------
+                header3="Annotate bins"
+                DEPENDENT_JOB=(${REASSEMBLE_JOB##* })
+                hpc_opts=$annotate_opts
+                pipeline_tag=annotate
+                # -----------------------------------
+                
+                run_module
+                ANNOTATE_JOB=$Current_Job
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
         ##- 5.1 AMR detection from assembly nucleotide sequences
-            
-            module_setup 5.1_NT_amr_assembly.sh
-            
-            # Module specific -------------------
-            header3="AMR detection from assembly nucleotide sequences"
-            DEPENDENT_JOB=$EVALUATION_JOB
-            hpc_opts=$amr_opts
-            pipeline_tag=nt_asm_amr
-            # -----------------------------------
-            
-            # Module specific actions -----------
-            # -----------------------------------
-            
-            
-            run_module 
-            AMR_NT_ASM_JOB=$Current_Job       
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            if $run_amr_nt_asm; then
+                module_setup 5.1_NT_amr_assembly.sh
+                
+                # Module specific -------------------
+                header3="AMR detection from assembly nucleotide sequences"
+                DEPENDENT_JOB=$EVALUATION_JOB
+                hpc_opts=$amr_opts
+                pipeline_tag=nt_asm_amr
+                # -----------------------------------
+                
+                run_module 
+                AMR_NT_ASM_JOB=$Current_Job       
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
         ##- 5.2 AMR detection from MAG nucleotide sequences
-            
-            module_setup 5.2_NT_amr_bins.sh
-            
-            # Module specific -------------------
-            header3="AMR detection from MAG nucleotide sequences"
-            DEPENDENT_JOB=$REASSEMBLE_JOB
-            hpc_opts=$amr_opts
-            pipeline_tag=nt_bin_amr
-            # -----------------------------------
-            
-            # Module specific actions -----------
-            # -----------------------------------
-            
-            
-            run_module 
-            AMR_NT_BIN_JOB=$Current_Job       
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            if $run_amr_nt_bin; then
+                module_setup 5.2_NT_amr_bins.sh
+                
+                # Module specific -------------------
+                header3="AMR detection from MAG nucleotide sequences"
+                DEPENDENT_JOB=$REASSEMBLE_JOB
+                hpc_opts=$amr_opts
+                pipeline_tag=nt_bin_amr
+                # -----------------------------------
+                
+                run_module 
+                AMR_NT_BIN_JOB=$Current_Job       
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
         ##- 5.3 ShortBRED AMR Identification
-            
-            module_setup 5.3_shortbred.sh
-            
-            # Module specific -------------------
-            header3="ShortBRED AMR Identification"
-            DEPENDENT_JOB=(${DECONTAM_JOB##* })
-            hpc_opts=$shortbred_opts
-            pipeline_tag=shortbred
-            # -----------------------------------
-            
-            # Module specific actions -----------
-            export shortbredDir=$moduleDir
-            # -----------------------------------
-            
-            
-            run_module 
-            ShortBRED_JOB=$Current_Job       
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            if $run_shortbred; then
+                module_setup 5.3_shortbred.sh
+                
+                # Module specific -------------------
+                header3="ShortBRED AMR Identification"
+                DEPENDENT_JOB=(${DECONTAM_JOB##* })
+                hpc_opts=$shortbred_opts
+                pipeline_tag=shortbred
+                export shortbredDir=$moduleDir
+                # -----------------------------------
+                
+                run_module 
+                ShortBRED_JOB=$Current_Job       
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
         ##- 5.4 RGI BWT AMR Identification
-            
-            module_setup 5.4_rgi_bwt.sh
-            
-            # Module specific -------------------
-            header3="RGI BWT AMR Identification"
-            DEPENDENT_JOB=(${DECONTAM_JOB##* })
-            hpc_opts=$rgi_bwt_opts
-            pipeline_tag=rgi_bwt
-            # -----------------------------------
-            
-            # Module specific actions -----------
-            export aligner=kma
-            # -----------------------------------
-            
-            
-            run_module 
-            RGI_BWT_JOB=$Current_Job       
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            if $run_rgi_bwt; then
+                module_setup 5.4_rgi_bwt.sh
+                
+                # Module specific -------------------
+                header3="RGI BWT AMR Identification"
+                DEPENDENT_JOB=(${DECONTAM_JOB##* })
+                hpc_opts=$rgi_bwt_opts
+                pipeline_tag=rgi_bwt
+                export aligner=kma
+                # -----------------------------------
+                
+                run_module 
+                RGI_BWT_JOB=$Current_Job       
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
         ##- 5.5 AMR detection from assembled predicted genes
-            
-            module_setup 5.5_AA_amr_assembly.sh
-            
-            # Module specific -------------------
-            header3="AMR detection from assembled predicted genes"
-            DEPENDENT_JOB=(${EVALUATION_JOB##* })
-            hpc_opts=$asm_profile_opts
-            pipeline_tag=aa_asm_amr
-            
-            
-            # Module specific -----------
-            # ---------------------------
-            
-            run_module
-            AMR_AA_ASM_JOB=$Current_Job
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            if $run_amr_aa_asm; then
+                module_setup 5.5_AA_amr_assembly.sh
+                
+                # Module specific -------------------
+                header3="AMR detection from assembled predicted genes"
+                DEPENDENT_JOB=(${EVALUATION_JOB##* })
+                hpc_opts=$asm_profile_opts
+                pipeline_tag=aa_asm_amr
+                # -----------------------------------
+                
+                run_module
+                AMR_AA_ASM_JOB=$Current_Job
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
         ##- 5.6 AMR detection from assembled predicted genes
-            
-            module_setup 5.6_AA_amr_bins.sh
-            
-            # Module specific -------------------
-            header3="AMR detection from assembled predicted genes"
-            DEPENDENT_JOB=(${REASSEMBLE_JOB##* })
-            hpc_opts=$asm_profile_opts
-            pipeline_tag=aa_bin_amr
-            
-            
-            # Module specific -----------
-            # ---------------------------
-            
-            run_module
-            AMR_AA_BIN_JOB=$Current_Job
-            if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            if $run_amr_aa_bin; then
+                module_setup 5.6_AA_amr_bins.sh
+                
+                # Module specific -------------------
+                header3="AMR detection from assembled predicted genes"
+                DEPENDENT_JOB=(${REASSEMBLE_JOB##* })
+                hpc_opts=$asm_profile_opts
+                pipeline_tag=aa_bin_amr
+                # -----------------------------------
+                
+                run_module
+                AMR_AA_BIN_JOB=$Current_Job
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
             
 
         ##- 6.1 Discard intermediate files
-            
-            # module_setup COMPLETE.sh
-            
-            # # Module specific -------------------
-            # header3="Discard intermediate files"
-            # DEPENDENT_JOB=(${PRE_QC_JOB##* } ${DEDUP_JOB##* } ${TRIM_JOB##* } ${DECONTAM_JOB##* } ${ASSEMBLY_JOB##* } ${KRAKEN_JOB##* } ${ShortBRED_JOB##* })
-            # hpc_opts=$discard_opts
-            # pipeline_tag=discard
-            # # -----------------------------------
-            
-            # # Module specific actions -----------
-            # Complete_tag=(COMPLETE/${ID})
-            # jobID=${ID}_cleanup
-            # # -----------------------------------
-            
-            
-            # run_module 
-            # DISCARD_JOB=$Current_Job       
-            # if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            if $run_clean_up; then
+                module_setup COMPLETE.sh
+                
+                # Module specific -------------------
+                header3="Discard intermediate files"
+                DEPENDENT_JOB=(${PRE_QC_JOB##* } ${DEDUP_JOB##* } ${TRIM_JOB##* } ${DECONTAM_JOB##* } ${ASSEMBLY_JOB##* } ${KRAKEN_JOB##* } ${ShortBRED_JOB##* })
+                hpc_opts=$discard_opts
+                pipeline_tag=discard
+                Complete_tag=(COMPLETE/${ID})
+                jobID=${ID}_cleanup
+                # -----------------------------------
+                
+                
+                run_module 
+                DISCARD_JOB=$Current_Job       
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
 
     done
