@@ -96,11 +96,12 @@
 
 if [[ ! -f "${outputFile}" ]]; then 
 
-    miniforge_init=/users/asorgen/miniforge3/etc/profile.d/conda.sh
-    RGI_ENV=/users/asorgen/miniforge3/envs/rgi
-    CARD_DB=/scratch/asorgen/RGI_databases/rgi_4.0.1
+    # miniforge_init=/users/asorgen/miniforge3/etc/profile.d/conda.sh
+    # RGI_ENV=/users/asorgen/miniforge3/envs/rgi
+    # CARD_DB=/scratch/asorgen/RGI_databases/rgi_4.0.1
     datasetROOT=/projects/afodor_research3/asorgen/HCT_Gut_Resistome_Pipeline/sequence_processing/UNC_short
-    clean_readDir=0.4_host_decontamination
+    datasetROOT=${ROOT}/${dataset}
+    # clean_readDir=0.4_host_decontamination
 
     cd $CARD_DB
 
@@ -128,16 +129,16 @@ if [[ ! -f "${outputFile}" ]]; then
     mkdir -p ${ID}_${aligner}
     cd ${ID}_${aligner}
 
-    trimmed_reads_1=/scratch/asorgen/RGI_databases/rgi_4.0.1/${ID}_kma/trimgalore_output/${ID}_1_val_1.fq.gz
-    trimmed_reads_2=/scratch/asorgen/RGI_databases/rgi_4.0.1/${ID}_kma/trimgalore_output/${ID}_2_val_2.fq.gz
+    # trimmed_reads_1=/scratch/asorgen/RGI_databases/rgi_4.0.1/${ID}_kma/trimgalore_output/${ID}_1_val_1.fq.gz
+    # trimmed_reads_2=/scratch/asorgen/RGI_databases/rgi_4.0.1/${ID}_kma/trimgalore_output/${ID}_2_val_2.fq.gz
 
-    if [[ ! -e "${trimmed_reads_1}" || ! -e "${trimmed_reads_2}" ]]; then
-        comment "$STEP"
-        conda activate metawrap-env
-        mkdir trimgalore_output
-        trim_galore --paired $reads_1 $reads_2 --gzip --quality 30 --length 50 --stringency 3 --max_n 0 -o trimgalore_output/
-        conda deactivate
-    fi
+    # if [[ ! -e "${trimmed_reads_1}" || ! -e "${trimmed_reads_2}" ]]; then
+    #     comment "$STEP"
+    #     conda activate metawrap-env
+    #     mkdir trimgalore_output
+    #     trim_galore --paired $reads_1 $reads_2 --gzip --quality 30 --length 50 --stringency 3 --max_n 0 -o trimgalore_output/
+    #     conda deactivate
+    # fi
 
 
     conda activate rgi

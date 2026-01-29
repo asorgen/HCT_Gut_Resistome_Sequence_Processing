@@ -146,7 +146,9 @@
 
         if ! $output_exists; then
             
-            CMD="trim_galore --no_report_file --paired $R1 $R2 -o $out"; echo $CMD
+            # CMD="trim_galore --no_report_file --paired $R1 $R2 -o $out"; echo $CMD
+            CMD="trim_galore --paired $R1 $R2 --gzip --quality 30 --length 50 --stringency 3 --max_n 0 -o $out"; echo $CMD
+
             $CMD; if [[ $? -ne 0 ]]; then error "Something went wrong! Exiting..."; fi
 
             comment "Fixing default TrimGalore naming output"
