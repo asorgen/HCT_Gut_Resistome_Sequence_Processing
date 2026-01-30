@@ -133,8 +133,16 @@ STEP="Taxonomic Classification"
 step_completion "${brackenDir}/sr/${ID}.bracken.out"
 
 # 5.3_shortbred
-STEP="AMR Gene Detection"
-step_completion "${shortbredDir}/${ID}.shortbred.tsv"
+if $run_shortbred; then
+    STEP="ShortBRED"
+    step_completion "${shortbredDir}/${ID}.shortbred.tsv"
+fi
+
+# 5.4_rgi_bwt
+if $run_rgi_bwt; then
+    STEP="AMR Gene Detection"
+    step_completion "${rgi_bwt_dir}/kma_output/${ID}.rgi_kma.txt"
+fi
 
 H1 "Completion"
     
