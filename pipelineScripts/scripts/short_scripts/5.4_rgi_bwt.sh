@@ -42,6 +42,7 @@
     H2 () { print_header.py "$1" "H2"; }
     H3 () { print_header.py "$1" "H3"; }
     comment () { print_header.py "$1" "#"; echo; }
+    print () { print_header.py "$1" "#"; }
     error () { echo $1; exit 1; }
     pFunc () { echo $1; echo; }
 
@@ -53,23 +54,23 @@
 
     H1 "Job Context"
         OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
-        comment "Job: $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
-        comment "Running on host: `hostname`"
+        print "Job: $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
+        print "Running on host: `hostname`"
 
         Total_Gb=$(( SLURM_MEM_PER_NODE / 1024 ))
 
         JobTime=$(squeue -h -j $SLURM_JOBID -o "%l")
 
         echo 
-        comment "----- Resources Requested -----"
-        comment "Nodes:            $SLURM_NNODES"
-        comment "Cores / node:     $SLURM_CPUS_PER_TASK"
-        comment "Total memory:     $Total_Gb Gb"
-        comment "Wall-clock time:  $JobTime"
-        comment "-------------------------------"
+        print "----- Resources Requested -----"
+        print "Nodes:            $SLURM_NNODES"
+        print "Cores / node:     $SLURM_CPUS_PER_TASK"
+        print "Total memory:     $Total_Gb Gb"
+        print "Wall-clock time:  $JobTime"
+        print "-------------------------------"
 
     H1 "Variables"
-        comment "SampleID (ID): ${ID}"
+        comment "SampleID: ${ID}"
 
         H2 "Input"
             datasetROOT=$(pwd); #echo "$datasetROOT"
@@ -78,56 +79,46 @@
             R2=${READ}_2.fastq.gz; echo $R2
             aligner=kma
 
-
         H2 "Output"
             outputFile=${moduleDir}/${aligner}_output/${ID}.rgi_${aligner}.txt
             echo -e "${outputFile}"
 
             if [[ ! -d ${moduleDir}/COMPLETE ]]; then mkdir ${moduleDir}/COMPLETE; fi
 
-    H2 "[ Start ]"
-    /bin/date
+    # H2 "[ Start ]"
+    # /bin/date
     SECONDS=0
     Complete_tag=()
     Intermediate_files=()
-
-
-
 
 if [[ ! -f "${outputFile}" ]]; then 
 
     # miniforge_init=/users/asorgen/miniforge3/etc/profile.d/conda.sh
     # RGI_ENV=/users/asorgen/miniforge3/envs/rgi
     # CARD_DB=/scratch/asorgen/RGI_databases/rgi_4.0.1
-    datasetROOT=/projects/afodor_research3/asorgen/HCT_Gut_Resistome_Pipeline/sequence_processing/UNC_short
-    datasetROOT=${ROOT}/${dataset}
+    # datasetROOT=/projects/afodor_research3/asorgen/HCT_Gut_Resistome_Pipeline/sequence_processing/UNC_short
+    # datasetROOT=${ROOT}/${dataset}
+    echo -e "datasetROOT=${datasetROOT}"
     # clean_readDir=0.4_host_decontamination
 
+    echo -e "cd $CARD_DB"
     cd $CARD_DB
 
+    comment "Load environments"
     module load anaconda3/2023.09
     module load diamond/2.0.9
     source $miniforge_init
     conda activate $RGI_ENV
 
-    H1 () { print_header.py "$1" "H1"; }
-    H2 () { print_header.py "$1" "H2"; }
-    H3 () { print_header.py "$1" "H3"; }
-    comment () { print_header.py "$1" "#"; echo; }
-    error () { echo $1; exit 1; }
-    pFunc () { echo $1; echo; }
-
-    # ID=BMT101D-7
-
-
-    READ=${datasetROOT}/${clean_readDir}/${ID}
-    reads_1=${READ}_1.fastq.gz
-    reads_2=${READ}_2.fastq.gz
-    aligner=kma
+    # comment "Set input variables"
+    # READ=${datasetROOT}/${clean_readDir}/${ID}
+    # reads_1=${READ}_1.fastq.gz; echo $reads_1
+    # reads_2=${READ}_2.fastq.gz; echo $reads_2
+    # aligner=kma; echo $aligner
 
     comment "$ID processing..."
     mkdir -p ${ID}_${aligner}
-    cd ${ID}_${aligner}
+    cd ${ID}_${aligner}; pwd
 
     # trimmed_reads_1=/scratch/asorgen/RGI_databases/rgi_4.0.1/${ID}_kma/trimgalore_output/${ID}_1_val_1.fq.gz
     # trimmed_reads_2=/scratch/asorgen/RGI_databases/rgi_4.0.1/${ID}_kma/trimgalore_output/${ID}_2_val_2.fq.gz
@@ -141,21 +132,31 @@ if [[ ! -f "${outputFile}" ]]; then
     # fi
 
 
-    conda activate rgi
+    # conda activate rgi
 
+    comment "Load CARD database"
     rgi load --card_json $CARD_DB/card.json --local
     rgi card_annotation -i $CARD_DB/card.json > card_annotation.log 2>&1
     rgi load -i $CARD_DB/card.json --card_annotation card_database_v4.0.1.fasta --local
 
+    comment "Run rgi"
     rgi bwt \
-    --read_one ${reads_1} --read_two ${reads_2} \
+    --read_one ${R1} --read_two ${R2} \
     -a $aligner \
     --output_file ${ID} \
     --threads $SLURM_CPUS_PER_TASK \
     --debug \
-    --clean --local
+    --clean --local &> ${ID}_log.out
 
-    cat ${ID}.gene_mapping_data.txt | wc -l
+    comment "rgi finished."
+    ls
+
+    if [[ $(cat ${ID}.gene_mapping_data.txt | wc -l) -gt 1 ]]; then
+        hits=$(cat ${ID}.gene_mapping_data.txt | wc -l); hits=$(( hits - 1 ))
+        comment "$hits hits"
+    else
+        error "No hits found"
+    fi
 
     cp ${ID}.gene_mapping_data.txt $datasetROOT/5.4_rgi_bwt/kma_output/${ID}.rgi_kma.txt
     cat $datasetROOT/5.4_rgi_bwt/kma_output/${ID}.rgi_kma.txt | wc -l

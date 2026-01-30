@@ -122,7 +122,7 @@
         comment "-------------------------------"
 
     H1 "Variables"
-        comment -e "SampleID (ID): ${ID}"
+        comment "SampleID: ${ID}"
 
         H2 "Input"
             R1=${clean_readDir}/${ID}_1.fastq.gz; echo -e "${R1}"
