@@ -162,8 +162,12 @@ if [[ ! -f "${outputFile}" ]]; then
     cat $datasetROOT/5.4_rgi_bwt/kma_output/${ID}.rgi_kma.txt | wc -l
 
     cd ..
-    rm -r ${ID}_kma
+    if [[ $(cat $outputFile | wc -l) -eq 1 ]]; then 
+        rm -r ${ID}_kma
+    fi
 fi
+
+cd $datasetROOT
 
 if [[ $(cat $outputFile | wc -l) -eq 1 ]]; then 
     echo -e "rm $outputFile"

@@ -140,7 +140,7 @@ fi
 
 # 5.4_rgi_bwt
 if $run_rgi_bwt; then
-    STEP="AMR Gene Detection"
+    STEP="RGI BWT"
     step_completion "${rgi_bwt_dir}/kma_output/${ID}.rgi_kma.txt"
 fi
 

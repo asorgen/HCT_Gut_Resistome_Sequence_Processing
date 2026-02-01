@@ -46,6 +46,7 @@ read=short
 dataset=${cohort}_${read}
 
 source pipelineScripts/configs/${dataset}-read.config
+source pipelineScripts/configs/functions.sh
 export bashrc
 export pipelineConfig=${ROOT}/pipelineScripts/configs/${dataset}-read.config
 export config_file=$(which config-metawrap)
@@ -53,109 +54,6 @@ export module_functions
 
 if [[ ! -d $ROOT/${dataset} ]]; then mkdir -p $ROOT/${dataset}; fi
 cd $ROOT/${dataset}
-
-# Set function for output comments
-    H1 () { print_header.py "$1" "H1"; }
-    H2 () { print_header.py "$1" "H2"; }
-    H3 () { print_header.py "$1" "H3"; }
-    comment () { print_header.py "$1" "#"; }
-    error () { echo $1; exit 1; }
-    job_lookup() { squeue -u asorgen --format='%.18i   %.9P   %.40j   %.1T   %.12M   %.10l   %.6D   %R' | awk -v id="$jobID" 'match($3,id) {print $1}'; }
-    module_setup() {
-        script=$1
-        
-        moduleDir="${script%.sh}"
-
-        if [ ! -z "$2" ]; then moduleDir=$moduleDir/$2; fi
-
-        if [[ ! -d ${moduleDir} ]]; then mkdir -p $moduleDir; fi
-        export moduleDir
-        
-        logDir=${moduleDir}/logs
-        if [[ ! -d ${logDir} ]]; then mkdir -p $logDir; fi
-
-        Complete_tag=(${moduleDir}/COMPLETE/${ID})
-
-        jobID="${script%%_*}"
-        jobID=${jobID}_${ID}_${dataset}
-        if [ ! -z "$2" ]; then jobID=${jobID}_$2; fi
-
-    }
-    first_ID() {
-        if [[ $module == 0 ]]; then 
-            H2 "${ID}"
-            ((module++))
-            ((count++))
-        fi    
-    }
-    run_module() {
-        
-        # If the completion file exists
-        all_exist=true
-
-        for file in "${Complete_tag[@]}"; do
-          if [[ ! -e "$file" ]]; then
-            echo $file
-            all_exist=false
-            break
-          fi
-        done
-
-        if $all_exist; then
-            
-            Current_Job=COMPLETE
-
-        else
-
-            queued=$(job_lookup $jobID)
-            # If the job is not queued
-            if [ -z "$queued" ]; then
-
-                ready_to_run=true
-                dependencies=""
-                for job in "${DEPENDENT_JOB[@]}"; do
-                    if [[ $job != "COMPLETE" ]]; then
-                        ready_to_run=false
-                        if [[ -z "$dependencies" ]]; then
-                            dependencies="${job}"
-                        else
-                            dependencies+=",${job}"
-                        fi
-                    fi
-                done
-                echo $dependencies
-
-                # If the dependent job is complete
-                if $ready_to_run; then
-
-                    first_ID
-                    H3 "$header3"
-                    Current_Job=$(sbatch \
-                        $hpc_opts \
-                        --job-name=${jobID} -o ${logDir}/${ID}.%A.log ${moduleScriptPath}/${script})
-                    echo $Current_Job
-                    echo "[ Log file ] -> ${dataset}/${logDir}/${ID}.${Current_Job##* }.log"
-
-                else
-                    
-                    H3 "$header3"
-                    # echo -e "sbatch --dependency=afterok:${dependencies} \
-                    #     $hpc_opts \
-                    #     --job-name=${jobID} -o ${logDir}/${ID}.%A.log ${moduleScriptPath}/${script}"
-                    Current_Job=$(sbatch --dependency=afterok:${dependencies} \
-                        $hpc_opts \
-                        --job-name=${jobID} -o ${logDir}/${ID}.%A.log ${moduleScriptPath}/${script})
-                    echo $Current_Job
-                    echo "[ Log file ] -> ${dataset}/${logDir}/${ID}.${Current_Job##* }.log"
-
-               fi 
-
-            else
-                Current_Job=$queued
-           fi # if [ -z "$queued" ]
-
-        fi     
-    }
 
 # Set up
     if [[ ! -f "LOGs/${dataset}_pipeline_$version.out" ]]; then
@@ -184,7 +82,7 @@ cd $ROOT/${dataset}
         module=0
         # if [[ $ID == "D21309D98" ]]; then continue; fi
         if [[ $ID == "D21309D98" || $ID == "D13004PRE" ]]; then continue; fi
-        if [[ $count -ge 50 ]]; then continue; fi
+        if [[ $count -ge 10 ]]; then continue; fi
 
         ##- 0.1 Pre-QC
             if $run_pre_qc; then
@@ -204,7 +102,8 @@ cd $ROOT/${dataset}
                 
                 run_module
                 PRE_QC_JOB=$Current_Job        
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
+                echo ${CLEAN_UP_DEP[@]}
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
@@ -223,7 +122,7 @@ cd $ROOT/${dataset}
                 
                 run_module
                 DEDUP_JOB=$Current_Job        
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
@@ -242,7 +141,7 @@ cd $ROOT/${dataset}
                 
                 run_module
                 TRIM_JOB=$Current_Job        
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
@@ -261,7 +160,7 @@ cd $ROOT/${dataset}
                 
                 run_module
                 DECONTAM_JOB=$Current_Job    
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
@@ -280,7 +179,7 @@ cd $ROOT/${dataset}
                 
                 run_module
                 ASSEMBLY_JOB=$Current_Job    
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
@@ -299,7 +198,7 @@ cd $ROOT/${dataset}
                 
                 run_module
                 EVALUATION_JOB=$Current_Job    
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
@@ -320,7 +219,7 @@ cd $ROOT/${dataset}
                 
                 run_module 
                 KRAKEN_JOB=$Current_Job        
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
@@ -339,7 +238,7 @@ cd $ROOT/${dataset}
                 
                 run_module
                 METAPHLAN_JOB=$Current_Job
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
@@ -358,7 +257,7 @@ cd $ROOT/${dataset}
                 
                 run_module
                 BINNING_JOB=$Current_Job
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
@@ -378,7 +277,7 @@ cd $ROOT/${dataset}
                 
                 run_module
                 REFINE_JOB=$Current_Job
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
@@ -397,7 +296,7 @@ cd $ROOT/${dataset}
                 
                 run_module
                 REASSEMBLE_JOB=$Current_Job
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
@@ -415,7 +314,7 @@ cd $ROOT/${dataset}
                 
                 run_module
                 ANNOTATE_JOB=$Current_Job
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
@@ -433,7 +332,7 @@ cd $ROOT/${dataset}
                 
                 run_module
                 ANNOTATE_JOB=$Current_Job
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
@@ -451,7 +350,7 @@ cd $ROOT/${dataset}
                 
                 run_module 
                 AMR_NT_ASM_JOB=$Current_Job       
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
@@ -469,7 +368,7 @@ cd $ROOT/${dataset}
                 
                 run_module 
                 AMR_NT_BIN_JOB=$Current_Job       
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
@@ -488,7 +387,7 @@ cd $ROOT/${dataset}
                 
                 run_module 
                 ShortBRED_JOB=$Current_Job       
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
@@ -508,7 +407,7 @@ cd $ROOT/${dataset}
                 
                 run_module 
                 RGI_BWT_JOB=$Current_Job
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
@@ -526,7 +425,7 @@ cd $ROOT/${dataset}
                 
                 run_module
                 AMR_AA_ASM_JOB=$Current_Job
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
@@ -544,7 +443,7 @@ cd $ROOT/${dataset}
                 
                 run_module
                 AMR_AA_BIN_JOB=$Current_Job
-                CLEAN_UP_DEP+=($Current_Job)
+                CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
             
@@ -552,10 +451,11 @@ cd $ROOT/${dataset}
         ##- 6.1 Discard intermediate files
             if $run_clean_up; then
                 module_setup COMPLETE.sh
-                
+
                 # Module specific -------------------
                 header3="Discard intermediate files"
-                DEPENDENT_JOB=($CLEAN_UP_DEP)
+                DEPENDENT_JOB=(${CLEAN_UP_DEP[@]})
+                # echo ${DEPENDENT_JOB[@]}
                 hpc_opts=$discard_opts
                 pipeline_tag=discard
                 Complete_tag=(COMPLETE/${ID})
