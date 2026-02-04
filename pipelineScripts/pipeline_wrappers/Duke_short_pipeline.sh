@@ -82,7 +82,7 @@ cd $ROOT/${dataset}
         module=0
         # if [[ $ID == "D21309D98" ]]; then continue; fi
         if [[ $ID == "D21309D98" || $ID == "D13004PRE" ]]; then continue; fi
-        if [[ $count -ge 10 ]]; then continue; fi
+        if [[ $count -ge 1 ]]; then continue; fi
 
         ##- 0.1 Pre-QC
             if $run_pre_qc; then

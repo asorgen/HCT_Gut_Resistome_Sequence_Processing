@@ -91,274 +91,87 @@
     Complete_tag=()
     Intermediate_files=()
 
-if [[ ! -f "${outputFile}" ]]; then 
-
-    # miniforge_init=/users/asorgen/miniforge3/etc/profile.d/conda.sh
-    # RGI_ENV=/users/asorgen/miniforge3/envs/rgi
-    # CARD_DB=/scratch/asorgen/RGI_databases/rgi_4.0.1
-    # datasetROOT=/projects/afodor_research3/asorgen/HCT_Gut_Resistome_Pipeline/sequence_processing/UNC_short
-    # datasetROOT=${ROOT}/${dataset}
-    echo -e "datasetROOT=${datasetROOT}"
-    # clean_readDir=0.4_host_decontamination
-
-    echo -e "cd $CARD_DB"
-    cd $CARD_DB
-
-    comment "Load environments"
-    module load anaconda3/2023.09
-    module load diamond/2.0.9
-    source $miniforge_init
-    conda activate $RGI_ENV
-
-    # comment "Set input variables"
-    # READ=${datasetROOT}/${clean_readDir}/${ID}
-    # reads_1=${READ}_1.fastq.gz; echo $reads_1
-    # reads_2=${READ}_2.fastq.gz; echo $reads_2
-    # aligner=kma; echo $aligner
-
-    comment "$ID processing..."
-    mkdir -p ${ID}_${aligner}
-    cd ${ID}_${aligner}; pwd
-
-    # trimmed_reads_1=/scratch/asorgen/RGI_databases/rgi_4.0.1/${ID}_kma/trimgalore_output/${ID}_1_val_1.fq.gz
-    # trimmed_reads_2=/scratch/asorgen/RGI_databases/rgi_4.0.1/${ID}_kma/trimgalore_output/${ID}_2_val_2.fq.gz
-
-    # if [[ ! -e "${trimmed_reads_1}" || ! -e "${trimmed_reads_2}" ]]; then
-    #     comment "$STEP"
-    #     conda activate metawrap-env
-    #     mkdir trimgalore_output
-    #     trim_galore --paired $reads_1 $reads_2 --gzip --quality 30 --length 50 --stringency 3 --max_n 0 -o trimgalore_output/
-    #     conda deactivate
-    # fi
-
-
-    # conda activate rgi
-
-    comment "Load CARD database"
-    rgi load --card_json $CARD_DB/card.json --local
-    rgi card_annotation -i $CARD_DB/card.json > card_annotation.log 2>&1
-    rgi load -i $CARD_DB/card.json --card_annotation card_database_v4.0.1.fasta --local
-
-    comment "Run rgi"
-    rgi bwt \
-    --read_one ${R1} --read_two ${R2} \
-    -a $aligner \
-    --output_file ${ID} \
-    --threads $SLURM_CPUS_PER_TASK \
-    --debug \
-    --clean --local &> ${ID}_log.out
-
-    comment "rgi finished."
-    ls
-
-    if [[ $(cat ${ID}.gene_mapping_data.txt | wc -l) -gt 1 ]]; then
-        hits=$(cat ${ID}.gene_mapping_data.txt | wc -l); hits=$(( hits - 1 ))
-        comment "$hits hits"
-    else
-        error "No hits found"
-    fi
-
-    cp ${ID}.gene_mapping_data.txt $datasetROOT/5.4_rgi_bwt/kma_output/${ID}.rgi_kma.txt
-    cat $datasetROOT/5.4_rgi_bwt/kma_output/${ID}.rgi_kma.txt | wc -l
-
-    cd ..
-    if [[ $(cat $outputFile | wc -l) -eq 1 ]]; then 
-        rm -r ${ID}_kma
-    fi
-fi
-
-cd $datasetROOT
-
-if [[ $(cat $outputFile | wc -l) -eq 1 ]]; then 
-    echo -e "rm $outputFile"
-    rm $outputFile
-    error "RGI BWT found no hits for this sample."
-
-else
-    touch ${moduleDir}/COMPLETE/$ID
-fi
-
-
-exit 0
-# Load environments --------------------------------------------------------------------------------------------------------
-    module load anaconda3/2023.09
-    # source /apps/pkg/anaconda3/2023.09/etc/profile.d/conda.sh
-    # conda activate metawrap-env
-
-
-# Run functions ------------------------------------------------------------------------------------------------------------
-if [[ $(cat $outputFile | wc -l) -eq 1 ]]; then 
-    rm $outputFile
-fi
-
-
-func="RGI"
-    H1 "$func"
-    if [[ -s "$outputFile" ]]; then
-        comment "Output file already found. Skipping this command..."
-    else
-        start=$SECONDS
-        #------------
-
-        STEP="Unzip the sequence files"
-            run_step=false
-            if $run_step; then
-                reads_1=${moduleDir}/${ID}_1.fastq
-                reads_2=${moduleDir}/${ID}_2.fastq
-                Unzip_files=(${reads_1} ${reads_2})
-                output_exists=$(test_for_output "${Unzip_files[@]}")
-                if ! "$output_exists"; then
-                    comment "$STEP"
-                    gunzip -c $R1 > ${reads_1}
-                    gunzip -c $R2 > ${reads_2}
-                fi
-                substep_completion "${Unzip_files[@]}"
-            else
-                reads_1=$R1
-                reads_2=$R2
-            fi
-            run_step=true
-     
-
-        comment "Make a tmp directory for processing."
-            comment "$ID processing..."
-            mkdir -p $CARD_DB/${ID}_${aligner}
-            cd $CARD_DB/${ID}_${aligner}
-
-        STEP="Additional quality filtering with Trim Galore"
-
-            trimmed_reads_1=$RGI_local/${ID}_${aligner}/trimgalore_output/${ID}_1_val_1.fq.gz
-            trimmed_reads_2=$RGI_local/${ID}_${aligner}/trimgalore_output/${ID}_2_val_2.fq.gz
-
-            if [[ ! -e "${trimmed_reads_1}" || ! -e "${trimmed_reads_2}" ]]; then
-                comment "$STEP"
-                conda activate metawrap-env
-                mkdir trimgalore_output
-                trim_galore --paired $reads_1 $reads_2 --gzip --quality 30 --length 50 --stringency 3 --max_n 0 -o trimgalore_output/
-                conda deactivate
-            fi
-
-
-        comment "Load tools"
+# Run RGI-BWT --------------------------------------------------------------------------------------------------------------
+    if [[ ! -f "${outputFile}" ]]; then # if the final output file doesn't exist 
+        # Load environments
+            comment "Load environments"
+            module load anaconda3/2023.09
             module load diamond/2.0.9
             source $miniforge_init
             conda activate $RGI_ENV
 
+        # Set up temp directory in scratch
+            comment "$ID processing..."
+            cd $CARD_DB
+            mkdir -p ${ID}_${aligner}
+            cd ${ID}_${aligner}; pwd
 
-        STEP="Load CARD reference data into local or working directory"
-            CARD_version=$(jq '._version' $CARD_DB/card.json  | tr -d '"')
-            H2 "CARD Database version: $CARD_version"
-            # run_step=false
-            if $run_step; then
-            # if [[ ! -e "${RGI_local}/localDB/card_reference.fasta" ]]; then
-                comment "$STEP"
+        # Load local CARD database
+            if [[ ! -d "localDB" ]]; then # if the local database does not exist
+                comment "Load CARD database"
                 rgi load --card_json $CARD_DB/card.json --local
-                       
-                rgi card_annotation -i $CARD_DB/card.json > $CARD_DB/card_annotation.log 2>&1
-
-                rgi load -i $CARD_DB/card.json --card_annotation $CARD_DB/card_database_v${CARD_version}.fasta
+                rgi card_annotation -i $CARD_DB/card.json > card_annotation.log 2>&1
+                rgi load -i $CARD_DB/card.json --card_annotation card_database_v4.0.1.fasta --local
             fi
 
-        STEP="Load CARD wildcard reference data into local or working directory"
-            run_step=false
-            if $run_step; then
-            # if [[ ! -e "${RGI_local}/localDB/card_wildcard_reference.fasta" ]]; then
-                comment "$STEP"
-                rgi wildcard_annotation -i wildcard_v${CARD_version}--card_json card.json \
-                    -v ${CARD_version} > wildcard_annotation.log 2>&1
-                rgi load --wildcard_annotation wildcard_database_v${CARD_version}.fasta \
-                    --card_json card.json \
-                    --wildcard_index wildcard_v${CARD_version}index-for-model-sequences.txt \
-                    --card_annotation card_database_v${CARD_version}.fasta --local
-            fi
-
-        STEP="Test kma manually"
-            run_step=false
-            if $run_step; then
-                H2 "$STEP"
-                kma \
-                    -ipe \
-                    ${reads_1} \
-                    ${reads_2} \
-                    -t_db ${RGI_local}/localDB/bwt/card_reference/kma/card_reference\
-                    -o ${ID}_kma_test \
-                    -t $SLURM_CPUS_PER_TASK
-            fi
-            run_step=true
-
-        STEP="Downsample reads for time reference."
-            run_step=false
-            if $run_step; then
-                comment "$STEP"
-                echo $(( $(zcat "$reads_1" | wc -l) / 4 ))
-                echo $(( $(zcat "$reads_2" | wc -l) / 4 ))
-
-                zcat ${reads_1} | head -n 1000000 > ${ID}_R1_1M_subsample.fastq
-                zcat ${reads_2} | head -n 1000000 > ${ID}_R2_1M_subsample.fastq
-                reads_1=${ID}_R1_1M_subsample.fastq
-                reads_2=${ID}_R2_1M_subsample.fastq
-            fi
-            run_step=true
-        
-        STEP="Run rgi bwt on ${READ}_1.fastq.gz and ${READ}_2.fastq.gz"
-            # run_step=false
-            if $run_step; then
-                H2 "$STEP"
+        # Run rgi bwt
+            if [[ ! -f "${ID}.gene_mapping_data.txt" ]]; then # if the gene mapping output does not exist
+                comment "Run RGI-BWT for the first time."
                 rgi bwt \
-                    --read_one ${trimmed_reads_1} --read_two ${trimmed_reads_2} \
-                    -a $aligner \
-                    --output_file ${ID} \
-                    --threads $SLURM_CPUS_PER_TASK \
-                    --debug \
-                    --clean --local
-                if [[ ! -s ${RGI_local}/${ID}_${aligner}/$ID.gene_mapping_data.txt ]]; then error "${RGI_local}/${ID}_${aligner}/$ID.gene_mapping_data.txt not found. Exiting"; fi
-            fi
-            run_step=true
+                --read_one ${R1} --read_two ${R2} \
+                -a $aligner \
+                --output_file ${ID} \
+                --threads $SLURM_CPUS_PER_TASK \
+                --debug \
+                --clean --local &> ${ID}_log.out
 
+                if [[ $(cat ${ID}.gene_mapping_data.txt | wc -l) -gt 1 ]]; then
+                    hits=$(cat ${ID}.gene_mapping_data.txt | wc -l); hits=$(( hits - 1 ))
+                    comment "RGI-BWT has successfully completed."
+                    comment "$hits hits"
+                else
+                    error "No hits found"
+                fi
+            elif [[ $(cat ${ID}.gene_mapping_data.txt | wc -l) -eq 1 ]]; then # else, if the gene mapping output does exist, but has no hits
+                comment "Rerun RGI-BWT since no hits were found."
+                rgi bwt \
+                --read_one ${R1} --read_two ${R2} \
+                -a $aligner \
+                --output_file ${ID} \
+                --threads $SLURM_CPUS_PER_TASK \
+                --debug \
+                --clean --local &> ${ID}_log.out
+
+                if [[ $(cat ${ID}.gene_mapping_data.txt | wc -l) -gt 1 ]]; then
+                    hits=$(cat ${ID}.gene_mapping_data.txt | wc -l); hits=$(( hits - 1 ))
+                    comment "RGI-BWT has successfully completed."
+                    comment "$hits hits"
+                else
+                    error "No hits found"
+                fi
+            else
+                comment "RGI-BWT has already successfully completed."
+                hits=$(cat ${ID}.gene_mapping_data.txt | wc -l); hits=$(( hits - 1 ))
+                comment "$hits hits"
+            fi
+
+        # Copy the gene mapping output to the project directory
+            cp ${ID}.gene_mapping_data.txt $datasetROOT/5.4_rgi_bwt/kma_output/${ID}.rgi_kma.txt
             cd $datasetROOT
 
-        STEP="Move output file to $moduleDir"
-            # run_step=false
-            if $run_step; then
-                comment "$STEP"
-                cp ${RGI_local}/${ID}_${aligner}/$ID.gene_mapping_data.txt $moduleDir/${ID}.rgi_${aligner}.txt
-            fi
-            run_step=true
-
-
-        STEP="Remove tmp files"
-            run_step=false
-            if $run_step; then
-                comment "$STEP"
-                rm -r ${RGI_local}/${ID}_${aligner}
-                # rm ${RGI_local}/$ID*
-            fi
-            run_step=true
-        
-        
-        conda deactivate
-        module unload diamond/2.0.9
-
-        #------------
-        end=$SECONDS; duration=$(( end-start ))
-
-        if [[ -s "$outputFile" ]]; then
-            H2 "Yipee! $func Complete"
-            comment "$func: $(elapsed_time "$duration")"
-        else
-            error "Something went wrong with $func. Exiting"
-        fi
+    else
+        comment "RGI-BWT output has already been generated."
     fi
 
-if [[ $(cat $outputFile | wc -l) -eq 1 ]]; then 
-    echo -e "rm $outputFile"
-    rm $outputFile
-    error "RGI BWT found no hits for this sample."
+# Clean up temp output from scratch directory
+    if [[ $(cat $outputFile | wc -l) -eq 1 ]]; then 
+        # echo -e "rm $outputFile"
+        rm $outputFile
+        error "RGI-BWT found no hits for this sample."
 
-else
-    touch ${moduleDir}/COMPLETE/$ID
-fi
-
-H1 "MODULE COMPLETE"
-duration=$SECONDS
-comment "$(elapsed_time "$duration")"
+    else
+        hits=$(cat $datasetROOT/5.4_rgi_bwt/kma_output/${ID}.rgi_kma.txt | wc -l); hits=$(( hits - 1 ))
+        comment "$hits hits"
+        touch ${moduleDir}/COMPLETE/$ID
+        rm -r ${CARD_DB}/${ID}_${aligner}
+    fi
