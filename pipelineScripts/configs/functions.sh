@@ -2,8 +2,10 @@
     H1 () { print_header.py "$1" "H1"; }
     H2 () { print_header.py "$1" "H2"; }
     H3 () { print_header.py "$1" "H3"; }
-    comment () { print_header.py "$1" "#"; }
+    comment () { print_header.py "$1" "#"; echo; }
+    print () { print_header.py "$1" "#"; }
     error () { echo $1; exit 1; }
+    pFunc () { echo $1; echo; }
 
 # Find out if the job is already queued
     job_lookup() { squeue -u asorgen --format='%.18i   %.9P   %.40j   %.1T   %.12M   %.10l   %.6D   %R' | awk -v id="$jobID" 'match($3,id) {print $1}'; }
@@ -70,7 +72,7 @@
                         fi
                     fi
                 done
-                echo $dependencies
+                # echo $dependencies
 
                 # If the dependent job is complete
                 if $ready_to_run; then

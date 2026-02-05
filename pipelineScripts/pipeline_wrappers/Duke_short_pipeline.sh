@@ -41,21 +41,25 @@
     # This pipeline was originally run on Red Hat Enterprise Linux 9.2 (Plow) using the Slurm Workload Manager.
 
 
-cohort=Duke
-read=short
-dataset=${cohort}_${read}
+# Set pipeline 
+    cohort=Duke
+    read=short
+    dataset=${cohort}_${read}
 
-source pipelineScripts/configs/${dataset}-read.config
-source pipelineScripts/configs/functions.sh
-export bashrc
-export pipelineConfig=${ROOT}/pipelineScripts/configs/${dataset}-read.config
-export config_file=$(which config-metawrap)
-export module_functions
+# Source configs and functions
+    source pipelineScripts/configs/${dataset}-read.config
+    source pipelineScripts/configs/functions.sh
+    export bashrc
+    export pipelineConfig=${ROOT}/pipelineScripts/configs/${dataset}-read.config
+    export config_file=$(which config-metawrap)
+    export module_functions
+    export print_functions
 
-if [[ ! -d $ROOT/${dataset} ]]; then mkdir -p $ROOT/${dataset}; fi
-cd $ROOT/${dataset}
 
 # Set up
+    if [[ ! -d $ROOT/${dataset} ]]; then mkdir -p $ROOT/${dataset}; fi
+    cd $ROOT/${dataset}
+
     if [[ ! -f "LOGs/${dataset}_pipeline_$version.out" ]]; then
         H3 "Usage"
         echo "export version=$version"
@@ -64,7 +68,6 @@ cd $ROOT/${dataset}
         comment "[ Raw sequence directory ]: ${seqPath}"
     fi
         
-
     mkdir -p LOGs
     export seqPath
     export readType
@@ -82,7 +85,7 @@ cd $ROOT/${dataset}
         module=0
         # if [[ $ID == "D21309D98" ]]; then continue; fi
         if [[ $ID == "D21309D98" || $ID == "D13004PRE" ]]; then continue; fi
-        if [[ $count -ge 1 ]]; then continue; fi
+        if [[ $count -ge 10 ]]; then continue; fi
 
         ##- 0.1 Pre-QC
             if $run_pre_qc; then
@@ -103,7 +106,7 @@ cd $ROOT/${dataset}
                 run_module
                 PRE_QC_JOB=$Current_Job        
                 CLEAN_UP_DEP+=(${Current_Job##* })
-                echo ${CLEAN_UP_DEP[@]}
+                # echo ${CLEAN_UP_DEP[@]}
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 

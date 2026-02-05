@@ -36,15 +36,7 @@
     source $bashrc
     source $bash_profile
     source $module_functions
-
-# Set function for output comments -----------------------------------------------------------------------------------------
-    H1 () { print_header.py "$1" "H1"; }
-    H2 () { print_header.py "$1" "H2"; }
-    H3 () { print_header.py "$1" "H3"; }
-    comment () { print_header.py "$1" "#"; echo; }
-    print () { print_header.py "$1" "#"; }
-    error () { echo $1; exit 1; }
-    pFunc () { echo $1; echo; }
+    source $print_functions
 
 # Print script information to log ------------------------------------------------------------------------------------------
     H1 "Description: 5.4_rgi_bwt.sh"
@@ -92,6 +84,7 @@
     Intermediate_files=()
 
 # Run RGI-BWT --------------------------------------------------------------------------------------------------------------
+    H1 "Running RGI-BWT"
     if [[ ! -f "${outputFile}" ]]; then # if the final output file doesn't exist 
         # Load environments
             comment "Load environments"
@@ -173,5 +166,12 @@
         hits=$(cat $datasetROOT/5.4_rgi_bwt/kma_output/${ID}.rgi_kma.txt | wc -l); hits=$(( hits - 1 ))
         comment "$hits hits"
         touch ${moduleDir}/COMPLETE/$ID
-        rm -r ${CARD_DB}/${ID}_${aligner}
+        if [[ -d ${CARD_DB}/${ID}_${aligner} ]]; then 
+            comment "Removing tmp scratch directory"
+            rm -r ${CARD_DB}/${ID}_${aligner}
+        fi
     fi
+
+H1 "PIPELINE COMPLETE :)"
+duration=$SECONDS
+comment "$(elapsed_time "$duration")"
