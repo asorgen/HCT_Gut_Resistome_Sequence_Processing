@@ -251,7 +251,7 @@ func="RGI"
         #------------
 
         module load diamond/2.0.9
-        conda activate $RGI_ENV
+        source $RGI_ENV
 
         tr -d "*" < ${moduleDir}/${ID}/${ID}_genes.faa > ${moduleDir}/${ID}/${ID}_genes_rgi.faa
         

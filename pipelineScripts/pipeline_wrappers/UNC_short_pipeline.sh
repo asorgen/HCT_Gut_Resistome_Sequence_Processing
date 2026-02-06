@@ -96,9 +96,9 @@
                 DEPENDENT_JOB=(COMPLETE)
                 hpc_opts=$pre_qc_opts
                 pipeline_tag=pre_qc
-                export raw_readDir=0.0_raw_reads
                 if [[ ! -d ${raw_readDir} ]]; then mkdir -p $raw_readDir; fi
-                export pre_qcDir=$moduleDir
+                export raw_readDir
+                export pre_qcDir
                 export R1_ext
                 export R2_ext
                 # ---------------------------
@@ -120,7 +120,7 @@
                 DEPENDENT_JOB=(${PRE_QC_JOB##* })
                 hpc_opts=$dedup_opts
                 pipeline_tag=dedup
-                export dedup_Dir=$moduleDir
+                export dedup_Dir
                 # ---------------------------
                 
                 run_module
@@ -139,7 +139,7 @@
                 DEPENDENT_JOB=(${DEDUP_JOB##* })
                 hpc_opts=$trim_opts
                 pipeline_tag=trim
-                export trimmed_Dir=$moduleDir
+                export trimmed_Dir
                 # ---------------------------
                 
                 run_module
@@ -158,7 +158,7 @@
                 DEPENDENT_JOB=(${TRIM_JOB##* })
                 hpc_opts=$decontam_opts
                 pipeline_tag=decontam
-                export clean_readDir=$moduleDir
+                export clean_readDir
                 # ---------------------------
                 
                 run_module
@@ -177,7 +177,7 @@
                 DEPENDENT_JOB=(${DECONTAM_JOB##* })
                 hpc_opts=$asm_opts
                 pipeline_tag=assembly
-                export assemblyDir=$moduleDir
+                export assemblyDir
                 # ---------------------------
                 
                 run_module
@@ -196,7 +196,7 @@
                 DEPENDENT_JOB=(${ASSEMBLY_JOB##* })
                 hpc_opts=$eval_opts
                 pipeline_tag=evaluation
-                export evaluationDir=$moduleDir
+                export evaluationDir
                 # ---------------------------
                 
                 run_module
@@ -215,8 +215,8 @@
                 DEPENDENT_JOB=(${DECONTAM_JOB##* })
                 hpc_opts=$k2_opts
                 pipeline_tag=kraken2
-                export krakenDir=$moduleDir
-                export brackenDir=2.2_bracken
+                export krakenDir
+                export brackenDir
                 if [[ ! -d $brackenDir ]]; then mkdir -p $brackenDir; fi
                 # -----------------------------------
                 
@@ -236,7 +236,7 @@
                 DEPENDENT_JOB=(${DECONTAM_JOB##* })
                 hpc_opts=$m4_opts
                 pipeline_tag=metaphlan4
-                export metaphlanDir=$moduleDir
+                export metaphlanDir
                 # ----------------------------
                 
                 run_module
@@ -255,7 +255,7 @@
                 DEPENDENT_JOB=(${EVALUATION_JOB##* })
                 hpc_opts=$bin_opts
                 pipeline_tag=binning
-                export binningDir=$moduleDir
+                export binningDir
                 # ---------------------------
                 
                 run_module
@@ -274,7 +274,7 @@
                 DEPENDENT_JOB=(${BINNING_JOB##* })
                 hpc_opts=$refine_opts
                 pipeline_tag=refine
-                export refinedbinDir=$moduleDir
+                export refinedbinDir
                 export min_completion; export max_contam
                 # ---------------------------
                 
@@ -294,7 +294,7 @@
                 DEPENDENT_JOB=(${REFINE_JOB##* })
                 hpc_opts=$reassem_opts
                 pipeline_tag=reassemble
-                export reassemDir=$moduleDir
+                export reassemDir
                 # ---------------------------
                 
                 run_module
@@ -385,7 +385,7 @@
                 DEPENDENT_JOB=(${DECONTAM_JOB##* })
                 hpc_opts=$shortbred_opts
                 pipeline_tag=shortbred
-                export shortbredDir=$moduleDir
+                export shortbredDir
                 # -----------------------------------
                 
                 run_module 
@@ -405,7 +405,7 @@
                 hpc_opts=$rgi_bwt_opts
                 pipeline_tag=rgi_bwt
                 export aligner=kma
-                export rgi_bwt_dir=$moduleDir
+                export rgi_bwt_dir
                 # -----------------------------------
                 
                 run_module 

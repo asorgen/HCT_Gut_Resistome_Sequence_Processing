@@ -171,7 +171,7 @@ if ! all_output_exists; then
             #------------
 
             module load diamond/2.0.9
-            conda activate $RGI_ENV
+            source $RGI_ENV
 
             rgi main \
                 -i $inputFile \

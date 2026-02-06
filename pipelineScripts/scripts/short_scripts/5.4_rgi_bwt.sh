@@ -92,7 +92,7 @@
             module load anaconda3/2023.09
             module load diamond/2.0.9
             source $miniforge_init
-            conda activate $RGI_ENV
+            source $RGI_ENV
 
         # Set up temp directory in scratch
             comment "$ID processing..."
