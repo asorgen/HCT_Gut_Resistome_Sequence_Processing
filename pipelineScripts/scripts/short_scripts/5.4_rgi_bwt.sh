@@ -72,6 +72,7 @@
             aligner=kma
 
         H2 "Output"
+            if [[ ! -d ${moduleDir}/${aligner}_output ]]; then mkdir ${moduleDir}/${aligner}_output; fi
             outputFile=${moduleDir}/${aligner}_output/${ID}.rgi_${aligner}.txt
             echo -e "${outputFile}"
 
@@ -97,7 +98,7 @@
             comment "$ID processing..."
             cd $CARD_DB
             mkdir -p ${ID}_${aligner}
-            cd ${ID}_${aligner}; pwd
+            cd ${ID}_${aligner}
 
         # Load local CARD database
             if [[ ! -d "localDB" ]]; then # if the local database does not exist
@@ -117,6 +118,10 @@
                 --threads $SLURM_CPUS_PER_TASK \
                 --debug \
                 --clean --local &> ${ID}_log.out
+                rgi_exit=$?
+                if [[ $rgi_exit -ne 0 ]]; then
+                    error "RGI-BWT failed with exit code $rgi_exit. Check ${ID}_log.out for details."
+                fi
 
                 if [[ $(cat ${ID}.gene_mapping_data.txt | wc -l) -gt 1 ]]; then
                     hits=$(cat ${ID}.gene_mapping_data.txt | wc -l); hits=$(( hits - 1 ))
@@ -134,6 +139,10 @@
                 --threads $SLURM_CPUS_PER_TASK \
                 --debug \
                 --clean --local &> ${ID}_log.out
+                rgi_exit=$?
+                if [[ $rgi_exit -ne 0 ]]; then
+                    error "RGI-BWT failed with exit code $rgi_exit. Check ${ID}_log.out for details."
+                fi
 
                 if [[ $(cat ${ID}.gene_mapping_data.txt | wc -l) -gt 1 ]]; then
                     hits=$(cat ${ID}.gene_mapping_data.txt | wc -l); hits=$(( hits - 1 ))
@@ -149,6 +158,7 @@
             fi
 
         # Copy the gene mapping output to the project directory
+            mkdir -p $datasetROOT/5.4_rgi_bwt/kma_output
             cp ${ID}.gene_mapping_data.txt $datasetROOT/5.4_rgi_bwt/kma_output/${ID}.rgi_kma.txt
             cd $datasetROOT
 
@@ -157,9 +167,8 @@
     fi
 
 # Clean up temp output from scratch directory
-    if [[ $(cat $outputFile | wc -l) -eq 1 ]]; then 
-        # echo -e "rm $outputFile"
-        rm $outputFile
+    if [[ ! -f "$outputFile" ]] || [[ $(cat $outputFile | wc -l) -le 1 ]]; then
+        if [[ -f "$outputFile" ]]; then rm $outputFile; fi
         error "RGI-BWT found no hits for this sample."
 
     else
