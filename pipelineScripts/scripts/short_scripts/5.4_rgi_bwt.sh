@@ -41,8 +41,7 @@
 # Print script information to log ------------------------------------------------------------------------------------------
     H1 "Description: 5.4_rgi_bwt.sh"
         echo -e "This script does the following:"
-        echo -e "1. Performs AMR gene annotation of .fna files using AMRFinderPlus"
-        echo -e "2. Performs AMR gene annotation of .fna files using RGI"
+        echo -e "1. Performs AMR gene annotation of trimmed, quality-filtered, cleaned sequence read (.fastq.gz) files using RGI-BWT"
 
     H1 "Job Context"
         OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
@@ -66,7 +65,7 @@
 
         H2 "Input"
             datasetROOT=$(pwd); #echo "$datasetROOT"
-            READ=${datasetROOT}/${clean_readDir}/${ID}
+            READ=${clean_readDir}/${ID}
             R1=${READ}_1.fastq.gz; echo $R1
             R2=${READ}_2.fastq.gz; echo $R2
             aligner=kma
@@ -91,7 +90,10 @@
             comment "Load environments"
             module load anaconda3/2023.09
             module load diamond/2.0.9
-            source $miniforge_init
+            module load samtools
+            module load bamtools
+            module load bedtools2
+            # source $miniforge_init
             source $RGI_ENV
 
         # Set up temp directory in scratch
@@ -158,7 +160,7 @@
             fi
 
         # Copy the gene mapping output to the project directory
-            mkdir -p $datasetROOT/5.4_rgi_bwt/kma_output
+            # mkdir -p $datasetROOT/5.4_rgi_bwt/kma_output
             cp ${ID}.gene_mapping_data.txt $datasetROOT/5.4_rgi_bwt/kma_output/${ID}.rgi_kma.txt
             cd $datasetROOT
 
@@ -181,6 +183,7 @@
         fi
     fi
 
-H1 "PIPELINE COMPLETE :)"
-duration=$SECONDS
-comment "$(elapsed_time "$duration")"
+# Complete pipeline
+    H1 "PIPELINE COMPLETE :)"
+    duration=$SECONDS
+    comment "$(elapsed_time "$duration")"

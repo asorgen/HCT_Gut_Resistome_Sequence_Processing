@@ -49,9 +49,9 @@
 # Source configs and functions
     source pipelineScripts/configs/${dataset}-read.config
     source pipelineScripts/configs/functions.sh
-    export bashrc
     export pipelineConfig=${ROOT}/pipelineScripts/configs/${dataset}-read.config
     export config_file=$(which config-metawrap)
+    export bashrc
     export module_functions
     export print_functions
 
@@ -85,7 +85,7 @@
         module=0
         # if [[ $ID == "D21309D98" ]]; then continue; fi
         if [[ $ID == "D21309D98" || $ID == "D13004PRE" ]]; then continue; fi
-        if [[ $count -ge 1 ]]; then continue; fi
+        if [[ $count -ge 5 ]]; then continue; fi
 
         ##- 0.1 Pre-QC
             if $run_pre_qc; then
