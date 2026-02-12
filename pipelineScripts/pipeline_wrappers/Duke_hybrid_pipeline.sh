@@ -58,7 +58,8 @@ export pipelineConfig=${dataset}-read.config
 source pipelineScripts/configs/${pipelineConfig}
 source $bashrc
 
-cd $ROOT/${dataset}
+if [[ ! -d $datasetDir ]]; then mkdir -p $datasetDir; fi
+cd $datasetDir
 mkdir -p LOGs
 
 export long_seqPath
@@ -159,7 +160,7 @@ fi
 
 ##- Copy ONT raw sequences
     # Count the number of .fastq.gz files in the directory
-    file_count=$(find "../LONG/raw_reads/" -maxdepth 1 -type f -name "*.fastq.gz" | wc -l)
+    file_count=$(find "../Duke_long/raw_reads/" -maxdepth 1 -type f -name "*.fastq.gz" | wc -l)
 
     # Check if the count is 14
     if [ "$file_count" -eq 14 ]; then
@@ -167,13 +168,13 @@ fi
     else
         H1 "Copy raw nanopore files"
         comment "Copying raw Nanopore sequenece files."
-        mkdir -p ../LONG/raw_reads
+        mkdir -p ../Duke_long/raw_reads
         script=cp_raw_ONT.sh
         RAW_READS_JOB=$(sbatch \
                 --partition=Orion --nodes=1 --ntasks-per-node=16 --mem-per-cpu=2GB --time=24:00:00 \
-                --job-name=cp_ONT -o ../LONG/LOGs/cp_raw_ONT.%A.log ../LONG/scripts/helper_scripts/${script})
+                --job-name=cp_ONT -o ../Duke_long/LOGs/cp_raw_ONT.%A.log ${ROOT}/pipelineScripts/scripts/long_scripts/helper_scripts/${script})
         echo $RAW_READS_JOB
-        echo "[ Log file ] -> ../LONG/LOGs/cp_raw_ONT.${RAW_READS_JOB##* }.log"
+        echo "[ Log file ] -> ../Duke_long/LOGs/cp_raw_ONT.${RAW_READS_JOB##* }.log"
     fi
 
 
@@ -200,30 +201,30 @@ for ID in $(tail -n +2 $sampleList); do
         else
             mkdir -p ${clean_readDir}
 
-            short_clean_OUT1=../SHORT/${clean_readDir}/${ID}_1.fastq
-            short_clean_OUT2=../SHORT/${clean_readDir}/${ID}_2.fastq
+            short_clean_OUT1=../Duke_short/${clean_readDir}/${ID}_1.fastq
+            short_clean_OUT2=../Duke_short/${clean_readDir}/${ID}_2.fastq
 
-            qc_OUT1=../SHORT/${moduleDir}/post-QC_reports/${ID}_1_fastqc.html
-            qc_OUT2=../SHORT/${moduleDir}/post-QC_reports/${ID}_2_fastqc.html
+            qc_OUT1=../Duke_short/${moduleDir}/post-QC_reports/${ID}_1_fastqc.html
+            qc_OUT2=../Duke_short/${moduleDir}/post-QC_reports/${ID}_2_fastqc.html
 
-            # If *_1.fastq and *_2.fastq are in SHORT/clean_reads AND *_1_fastqc.html and *_2_fastqc.html are in SHORT/read_qc/post-QC_reports
+            # If *_1.fastq and *_2.fastq are in Duke_short/clean_reads AND *_1_fastqc.html and *_2_fastqc.html are in Duke_short/read_qc/post-QC_reports
             if [ -s "$short_clean_OUT1" ] && [ -s "$short_clean_OUT2" ] && [ -s "$qc_OUT1" ] && [ -s "$qc_OUT2" ]; then
-                ln ${ROOT}/SHORT/${clean_readDir}/${ID}_1.fastq ${ROOT}/HYBRID/${clean_readDir}/${ID}_1.fastq
-                ln ${ROOT}/SHORT/${clean_readDir}/${ID}_2.fastq ${ROOT}/HYBRID/${clean_readDir}/${ID}_2.fastq
+                ln ${DATA_ROOT}/Duke_short/${clean_readDir}/${ID}_1.fastq ${DATA_ROOT}/Duke_hybrid/${clean_readDir}/${ID}_1.fastq
+                ln ${DATA_ROOT}/Duke_short/${clean_readDir}/${ID}_2.fastq ${DATA_ROOT}/Duke_hybrid/${clean_readDir}/${ID}_2.fastq
                 SHORT_QC_JOB=COMPLETE
 
-            # If *_1.fastq and *_2.fastq are NOT in SHORT/clean_reads AND *_1_fastqc.html and *_2_fastqc.html are NOT in SHORT/read_qc/post-QC_reports
+            # If *_1.fastq and *_2.fastq are NOT in Duke_short/clean_reads AND *_1_fastqc.html and *_2_fastqc.html are NOT in Duke_short/read_qc/post-QC_reports
             else
-                
+
                 jobID=$(printf "%02d" $module)
                 jobID=${jobID}_${ID}_short
-                
-                export moduleDir=../SHORT/${moduleDir}
+
+                export moduleDir=../Duke_short/${moduleDir}
                 logDir=${moduleDir}/${ID}
                 mkdir -p $logDir
-                mkdir -p ../SHORT/${clean_readDir}
-                mkdir -p ../SHORT/${moduleDir}/pre-QC_reports
-                mkdir -p ../SHORT/${moduleDir}/post-QC_reports
+                mkdir -p ../Duke_short/${clean_readDir}
+                mkdir -p ../Duke_short/${moduleDir}/pre-QC_reports
+                mkdir -p ../Duke_short/${moduleDir}/post-QC_reports
                 export R1_ext
                 export R2_ext
 
@@ -235,7 +236,7 @@ for ID in $(tail -n +2 $sampleList); do
                     H3 "Short-read QC"
                     SHORT_QC_JOB=$(sbatch \
                         $short_read_qc_opts \
-                        --job-name=${jobID} -o ${logDir}/${ID}.%A.log ../SHORT/scripts/modules/${script})
+                        --job-name=${jobID} -o ${logDir}/${ID}.%A.log ${ROOT}/pipelineScripts/scripts/short_scripts/${script})
                     echo $SHORT_QC_JOB
                     echo "[ Log file ] -> ${logDir}/${ID}.${SHORT_QC_JOB##* }.log"
                 # If this job is already in the queue
@@ -243,7 +244,7 @@ for ID in $(tail -n +2 $sampleList); do
                     SHORT_QC_JOB=$queued
                 fi # If this job is not already in the queue
 
-            fi # If *_1.fastq and *_2.fastq are in SHORT/clean_reads
+            fi # If *_1.fastq and *_2.fastq are in Duke_short/clean_reads
 
         fi # If *_1.fastq and *_2.fastq are in HYBRID/clean_reads
 
@@ -261,26 +262,26 @@ for ID in $(tail -n +2 $sampleList); do
 
         # If *_ont.fastq is NOT already in HYBRID/clean_reads
         else
-            long_clean_OUT=../LONG/${clean_readDir}/${ID}_ont.fastq
-            qc_OUT=../LONG/${moduleDir}/post-QC_reports/${ID}_fastqc.html
+            long_clean_OUT=../Duke_long/${clean_readDir}/${ID}_ont.fastq
+            qc_OUT=../Duke_long/${moduleDir}/post-QC_reports/${ID}_fastqc.html
 
-            # If *_ont.fastq is already in LONG/clean_reads AND *_fastqc.html is in LONG/read_qc/post-QC_reports
+            # If *_ont.fastq is already in Duke_long/clean_reads AND *_fastqc.html is in Duke_long/read_qc/post-QC_reports
             if [ -s "$long_clean_OUT" ] && [ -s "$qc_OUT" ]; then
-                ln ${ROOT}/LONG/${clean_readDir}/${ID}_ont.fastq ${ROOT}/HYBRID/${clean_readDir}/${ID}_ont.fastq
+                ln ${DATA_ROOT}/Duke_long/${clean_readDir}/${ID}_ont.fastq ${DATA_ROOT}/Duke_hybrid/${clean_readDir}/${ID}_ont.fastq
                 LONG_QC_JOB=COMPLETE
 
-            # If *_ont.fastq is NOT already in LONG/clean_reads AND *_fastqc.html is NOT in LONG/read_qc/post-QC_reports
+            # If *_ont.fastq is NOT already in Duke_long/clean_reads AND *_fastqc.html is NOT in Duke_long/read_qc/post-QC_reports
             else
 
                 jobID=$(printf "%02d" $module)
                 jobID=${jobID}_${ID}_long
 
-                export moduleDir=../LONG/${moduleDir}
+                export moduleDir=../Duke_long/${moduleDir}
                 logDir=${moduleDir}/${ID}
                 mkdir -p $logDir
-                mkdir -p ../LONG/${clean_readDir}
-                mkdir -p ../LONG/${moduleDir}/pre-QC_reports
-                mkdir -p ../LONG/${moduleDir}/post-QC_reports
+                mkdir -p ../Duke_long/${clean_readDir}
+                mkdir -p ../Duke_long/${moduleDir}/pre-QC_reports
+                mkdir -p ../Duke_long/${moduleDir}/post-QC_reports
 
 
                 queued=$(job_lookup $jobID)
@@ -295,7 +296,7 @@ for ID in $(tail -n +2 $sampleList); do
                         H3 "Long-read QC"
                         LONG_QC_JOB=$(sbatch \
                             $long_read_qc_opts \
-                            --job-name=${jobID} -o ${logDir}/${ID}.%A.log ../LONG/scripts/modules/${script})
+                            --job-name=${jobID} -o ${logDir}/${ID}.%A.log ${ROOT}/pipelineScripts/scripts/long_scripts/${script})
                         echo $LONG_QC_JOB
                         echo "[ Log file ] -> ${logDir}/${ID}.${LONG_QC_JOB##* }.log"
                     
@@ -305,7 +306,7 @@ for ID in $(tail -n +2 $sampleList); do
                         H3 "Long-read QC"
                         LONG_QC_JOB=$(sbatch --dependency=afterok:${DEPENDENT_JOB##* } \
                             $long_read_qc_opts \
-                            --job-name=${jobID} -o ${logDir}/${ID}.%A.log ../LONG/scripts/modules/${script})
+                            --job-name=${jobID} -o ${logDir}/${ID}.%A.log ${ROOT}/pipelineScripts/scripts/long_scripts/${script})
                         echo $LONG_QC_JOB
                         echo "[ Log file ] -> ${logDir}/${ID}.${LONG_QC_JOB##* }.log"
 
@@ -320,7 +321,7 @@ for ID in $(tail -n +2 $sampleList); do
 
 
 
-            fi # If *_ont.fastq is already in LONG/clean_reads
+            fi # If *_ont.fastq is already in Duke_long/clean_reads
 
         fi # If *_ont.fastq is already in HYBRID/clean_reads
         ((module++))

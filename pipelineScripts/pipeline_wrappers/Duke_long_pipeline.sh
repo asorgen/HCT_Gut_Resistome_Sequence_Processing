@@ -59,7 +59,8 @@ source /users/asorgen/.bashrc
 export pipelineConfig=${dataset}-read.config
 source pipelineScripts/configs/${pipelineConfig}
 
-cd $ROOT/${dataset}
+if [[ ! -d $datasetDir ]]; then mkdir -p $datasetDir; fi
+cd $datasetDir
 mkdir -p LOGs
 
 export seqPath

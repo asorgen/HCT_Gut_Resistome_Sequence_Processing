@@ -57,8 +57,8 @@
 
 
 # Set up
-    if [[ ! -d $ROOT/${dataset} ]]; then mkdir -p $ROOT/${dataset}; fi
-    cd $ROOT/${dataset}
+    if [[ ! -d $datasetDir ]]; then mkdir -p $datasetDir; fi
+    cd $datasetDir
 
     if [[ ! -f "LOGs/${dataset}_pipeline_$version.out" ]]; then
         H3 "Usage"

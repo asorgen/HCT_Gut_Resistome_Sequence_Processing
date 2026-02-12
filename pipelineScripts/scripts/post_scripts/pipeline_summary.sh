@@ -178,9 +178,9 @@ for pipeline in "${PIPELINES[@]}"; do
 	export ps_path=${ROOT}/pipelineScripts/scripts/post_scripts
 	# echo "post scripts: $ps_path"
 
-	cd $pipeline
+	cd $datasetDir
 
-	out=${pipeline}_tables
+	out=${PROCESSED_ROOT}/${pipeline}_tables
 	mkdir -p ${out}
 
 	# read_qc
