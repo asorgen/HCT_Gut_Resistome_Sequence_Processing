@@ -10,12 +10,12 @@ The pipeline is organized into numbered modules that execute sequentially throug
 
 ### Preprocessing (Module 0.x)
 
-| Module | Description | Tools | Input | Output |
-|--------|-------------|-------|-------|--------|
-| 0.1 Pre-QC | Quality assessment and decompression of raw reads | FastQC | Raw gzipped FASTQ files | FastQC reports, unzipped FASTQ files |
-| 0.2 Deduplication | Removal of duplicate reads | BBMap (`clumpify.sh`) | Unzipped FASTQ files | De-duplicated FASTQ files |
-| 0.3 Trimming | Adapter removal and quality trimming | TrimGalore, Cutadapt | De-duplicated FASTQ files | Quality-trimmed FASTQ files |
-| 0.4 Host Decontamination | Removal of human-derived reads | BMTagger (hg38 index) | Trimmed FASTQ files | Clean, host-free FASTQ files |
+| Module                   | Description                                       | Tools                     | Input                     | Output                               |
+| ------------------------ | ------------------------------------------------- | ------------------------- | ------------------------- | ------------------------------------ |
+| 0.1 Pre-QC               | Quality assessment and decompression of raw reads | FastQC                    | Raw gzipped FASTQ files   | FastQC reports, unzipped FASTQ files |
+| 0.2 Deduplication        | Removal of duplicate reads                        | HTStream (`SuperDeduper`) | Unzipped FASTQ files      | De-duplicated FASTQ files            |
+| 0.3 Trimming             | Adapter removal and quality trimming              | TrimGalore, Cutadapt      | De-duplicated FASTQ files | Quality-trimmed FASTQ files          |
+| 0.4 Host Decontamination | Removal of human-derived reads                    | Bowtie2, Samtools, FastQC (GRCh38 index) | Trimmed FASTQ files       | Clean, host-free FASTQ files, FastQC reports |
 
 ### Assembly and Evaluation (Module 1.x)
 
@@ -28,8 +28,10 @@ The pipeline is organized into numbered modules that execute sequentially throug
 
 | Module | Description | Tools | Input | Output |
 |--------|-------------|-------|-------|--------|
-| 2.1 Kraken2 | Taxonomic classification of reads and assembly | Kraken2, Bracken, KronaTools | Clean reads + assembly | Kraken2 reports, Bracken abundance estimates, Kronagram HTML visualizations |
+| 2.1 Kraken2 | Taxonomic classification of reads and assembly | metaWRAP `kraken2_bracken` (modified), Bracken, KronaTools | Clean reads + assembly | Kraken2 reports, Bracken abundance estimates, Kronagram HTML visualizations |
 | 2.3 MetaPhlAn4 | Marker-based taxonomic profiling (optional) | MetaPhlAn4 | Clean reads | Taxonomic abundance profiles |
+
+> **Note:** Module 2.1 uses a modified version of metaWRAP's `kraken2` module (`kraken2_bracken`) that integrates Kraken2 classification, KronaTools visualization, and Bracken abundance estimation into a single workflow. Species-level Bracken abundance estimates are then generated separately using `est_abundance.py`.
 
 ### Binning and Refinement (Module 3.x)
 
@@ -50,14 +52,14 @@ The pipeline is organized into numbered modules that execute sequentially throug
 
 Multiple complementary approaches for antimicrobial resistance gene identification:
 
-| Module | Description | Tools | Input | Output |
-|--------|-------------|-------|-------|--------|
-| 5.1 NT AMR (Assembly) | Nucleotide-level AMR detection from assembly | AMRFinder+, RGI | Filtered assembly | AMR gene predictions |
-| 5.2 NT AMR (MAGs) | Nucleotide-level AMR detection from MAGs | AMRFinder+, RGI | Reassembled bins | Bin-level AMR predictions |
-| 5.3 ShortBRED | Marker-based AMR quantification from reads | ShortBRED (CARD markers) | Clean reads | AMR marker abundances |
-| 5.4 RGI BWT | Read-mapping AMR profiling against CARD | RGI (KMA aligner) | Clean reads | CARD-mapped AMR profiles |
-| 5.5 AA AMR (Assembly) | Protein-level AMR detection from assembly | Prodigal, AMRFinder+, RGI | Filtered assembly | Protein-level AMR predictions |
-| 5.6 AA AMR (MAGs) | Protein-level AMR detection from MAGs | Prodigal, AMRFinder+, RGI | Reassembled bins | Protein-level bin AMR predictions |
+| Module                | Description                                  | Tools                                  | Input             | Output                            |
+| --------------------- | -------------------------------------------- | -------------------------------------- | ----------------- | --------------------------------- |
+| 5.1 NT AMR (Assembly) | Nucleotide-level AMR detection from assembly | AMRFinder+, RGI (`rgi main`)           | Filtered assembly | AMR gene predictions              |
+| 5.2 NT AMR (MAGs)     | Nucleotide-level AMR detection from MAGs     | AMRFinder+, RGI (`rgi main`)           | Reassembled bins  | Bin-level AMR predictions         |
+| 5.3 ShortBRED         | Marker-based AMR quantification from reads   | ShortBRED (CARD markers)               | Clean reads       | AMR marker abundances             |
+| 5.4 RGI BWT           | Read-mapping AMR profiling against CARD      | RGI (`rgi bwt`)                        | Clean reads       | CARD-mapped AMR profiles          |
+| 5.5 AA AMR (Assembly) | Protein-level AMR detection from assembly    | Prodigal, AMRFinder+, RGI (`rgi main`) | Filtered assembly | Protein-level AMR predictions     |
+| 5.6 AA AMR (MAGs)     | Protein-level AMR detection from MAGs        | Prodigal, AMRFinder+, RGI (`rgi main`) | Reassembled bins  | Protein-level bin AMR predictions |
 
 ### Cleanup (Module 6)
 
@@ -173,31 +175,58 @@ Detailed documentation for each pipeline module:
 
 ---
 
+## Post-Pipeline Summary
+
+After pipeline modules complete, use `pipeline_summary.sh` to aggregate per-sample output files into combined data tables. The script can be run interactively or submitted as a SLURM job.
+
+```bash
+# Summarize all modules for one pipeline
+sbatch pipelineScripts/scripts/post_scripts/pipeline_summary.sh -p Duke_short
+
+# Summarize specific modules
+bash pipelineScripts/scripts/post_scripts/pipeline_summary.sh -p Duke_short -m kraken2,shortbred
+
+# Summarize multiple pipelines
+sbatch pipelineScripts/scripts/post_scripts/pipeline_summary.sh -p Duke_short,UNC_short
+```
+
+**Options:**
+
+| Flag | Description |
+|------|-------------|
+| `-p, --pipeline` | *Required.* Comma-separated pipeline names (`Duke_short`, `Duke_long`, `Duke_hybrid`, `UNC_short`) |
+| `-m, --module` | *Optional.* Comma-separated module names to summarize (default: `all`). Options: `read_qc`, `evaluation`, `kraken2`, `metaphlan4`, `binning`, `refine_bins`, `reassemble_bins`, `classify_bins`, `annotate_bins`, `amr_detection`, `asm_gene_profiling`, `bin_gene_profiling`, `shortbred`, `rgi_bwt` |
+
+Output tables are written to `<PROCESSED_ROOT>/<pipeline>_tables/`.
+
+---
+
 ## Key Tools and Dependencies
 
-| Category | Tools |
-|----------|-------|
-| Quality Control | FastQC, QUAST |
-| Read Processing | BBMap, TrimGalore, Cutadapt, BMTagger |
-| Assembly | metaSPAdes, Megahit, metaFlye, OPERA-MS, SPAdes |
+| Category                 | Tools                                            |
+| ------------------------ | ------------------------------------------------ |
+| Quality Control          | FastQC, QUAST                                    |
+| Read Processing          | HTStream, TrimGalore, Cutadapt, Bowtie2, Samtools |
+| Assembly                 | metaSPAdes, Megahit, metaFlye, OPERA-MS, SPAdes  |
 | Taxonomic Classification | Kraken2, Bracken, KronaTools, MetaPhlAn4, BLASTN |
-| Binning | MetaBat2, MaxBin2, CONCOCT |
-| Bin Refinement | metaWRAP, CheckM |
-| Annotation | Prokka, Bakta, Prodigal |
-| AMR Detection | AMRFinder+, RGI (CARD), ShortBRED |
+| Binning                  | MetaBat2, MaxBin2, CONCOCT                       |
+| Bin Refinement           | metaWRAP, CheckM                                 |
+| Annotation               | Prokka, Bakta, Prodigal                          |
+| AMR Detection            | AMRFinder+, RGI (CARD), ShortBRED                |
 
 ---
 
 ## Required Databases
 
-| Database | Purpose |
-|----------|---------|
-| hg38 (BMTagger index) | Human host read removal |
-| Kraken2 DB | Taxonomic classification |
-| CARD | Comprehensive Antibiotic Resistance Database (used by RGI, ShortBRED) |
-| CheckM | Bin quality assessment |
-| GTDBtk | Genome taxonomy classification |
-| Bakta | Functional annotation |
-| ShortBRED markers | CARD-derived AMR markers for read-based quantification |
-| NCBI BLAST DB | Nucleotide similarity searches |
-| MetaPhlAn4 markers | Marker-based taxonomic profiling |
+| Database                  | Purpose                                                               |
+| ------------------------- | --------------------------------------------------------------------- |
+| GRCh38 (Bowtie2 index)    | Human host read removal                                               |
+| Kraken2 DB                | Taxonomic classification                                              |
+| CARD                      | Comprehensive Antibiotic Resistance Database (used by RGI, ShortBRED) |
+| CheckM                    | Bin quality assessment                                                |
+| GTDBtk                    | Genome taxonomy classification                                        |
+| Bakta                     | Functional annotation                                                 |
+| ShortBRED markers         | CARD-derived AMR markers for read-based quantification                |
+| NCBI BLAST DB             | Nucleotide similarity searches                                        |
+| MetaPhlAn4 markers        | Marker-based taxonomic profiling                                      |
+
