@@ -1,9 +1,12 @@
+# Resolve path to print_header.py relative to this file
+    PRINT_HEADER="$(cd "$(dirname "${BASH_SOURCE[0]}")/../scripts/helper_scripts" && pwd)/print_header.py"
+
 # Set function for output comments
-    H1 () { print_header.py "$1" "H1"; }
-    H2 () { print_header.py "$1" "H2"; }
-    H3 () { print_header.py "$1" "H3"; }
-    comment () { print_header.py "$1" "#"; echo; }
-    print () { print_header.py "$1" "#"; }
+    H1 () { "$PRINT_HEADER" "$1" "H1"; }
+    H2 () { "$PRINT_HEADER" "$1" "H2"; }
+    H3 () { "$PRINT_HEADER" "$1" "H3"; }
+    comment () { "$PRINT_HEADER" "$1" "#"; echo; }
+    print () { "$PRINT_HEADER" "$1" "#"; }
     error () { echo $1; exit 1; }
     pFunc () { echo $1; echo; }
 
