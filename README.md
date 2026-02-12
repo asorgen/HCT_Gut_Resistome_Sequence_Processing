@@ -31,7 +31,7 @@ The pipeline is organized into numbered modules that execute sequentially throug
 | 2.1 Kraken2 | Taxonomic classification of reads and assembly | metaWRAP `kraken2_bracken` (modified), Bracken, KronaTools | Clean reads + assembly | Kraken2 reports, Bracken abundance estimates, Kronagram HTML visualizations |
 | 2.3 MetaPhlAn4 | Marker-based taxonomic profiling (optional) | MetaPhlAn4 | Clean reads | Taxonomic abundance profiles |
 
-> **Note:** Module 2.1 uses a modified version of metaWRAP's `kraken2` module (`kraken2_bracken`) that integrates Kraken2 classification, KronaTools visualization, and Bracken abundance estimation into a single workflow. Species-level Bracken abundance estimates are then generated separately using `est_abundance.py`.
+> **Note:** Module 2.1 uses a modified version of metaWRAP's `kraken2` module (`kraken2_bracken`) that integrates Kraken2 classification, KronaTools visualization, and Bracken abundance estimation into a single workflow. Species-level Bracken abundance estimates are then generated separately using `est_abundance.py`. See [Installing Modified metaWRAP Modules](#installing-modified-metawrap-modules) for setup instructions.
 
 ### Binning and Refinement (Module 3.x)
 
@@ -76,6 +76,7 @@ sequence_processing/
 ├── pipelineScripts/
 │   ├── configs/                        # Pipeline configuration files (.config)
 │   │   └── functions.sh                # Shared helper functions (job submission, logging)
+│   ├── modified-metaWRAP-modules/       # Custom metaWRAP modules (see installation instructions below)
 │   ├── pipeline_wrappers/              # Entry-point scripts that orchestrate the full pipeline
 │   ├── sample_lists/                   # Sample ID manifests (one sample per line)
 │   └── scripts/
@@ -132,6 +133,7 @@ A streamlined mode that runs only preprocessing and read-based AMR profiling. Th
 3. Required reference databases downloaded to the `databases/` directory
 4. A sample list file with one sample ID per line in `pipelineScripts/sample_lists/`
 5. A completed `.config` file with correct paths and module settings
+6. Modified metaWRAP modules installed (see the [Kraken2 manual](manuals/kraken2.md#modified-metawrap-module-installation) for instructions)
 
 ### Quickstart
 

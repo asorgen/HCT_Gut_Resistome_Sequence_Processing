@@ -11,7 +11,37 @@
 
 ## Setup
 
-See [setup](manuals/setup.md) for requirements. 
+See [setup](setup.md) for general requirements.
+
+### Modified metaWRAP Module Installation
+
+This module uses a modified version of metaWRAP's `kraken2` module called `kraken2_bracken`, which integrates Kraken2 classification, KronaTools visualization, and Bracken abundance estimation into a single workflow. The modified module is included in this repository under `pipelineScripts/modified-metaWRAP-modules/`.
+
+To install it into your metaWRAP installation:
+
+1. Locate your metaWRAP installation's `bin/` directory (where the `metawrap` script lives):
+   ```bash
+   which metawrap
+   # Example output: /path/to/metaWRAP/bin/metawrap
+   ```
+
+2. Copy the modified module into metaWRAP's `bin/metawrap-scripts/` directory:
+   ```bash
+   METAWRAP_DIR="$(dirname "$(which metawrap)")/.."
+   cp pipelineScripts/modified-metaWRAP-modules/kraken2_bracken.sh "$METAWRAP_DIR/bin/metawrap-scripts/"
+   ```
+
+3. Register the module by adding the following block to the `metawrap` master script (located at `$METAWRAP_DIR/bin/metawrap`). Add it after the existing `kraken2` entry:
+   ```bash
+   elif [ "$1" = kraken2_bracken ]; then
+   	echo metawrap kraken2_bracken ${@:2}
+   	time ${PIPES}/kraken2_bracken.sh ${@:2}
+   ```
+
+4. Verify the installation:
+   ```bash
+   metawrap kraken2_bracken --help
+   ```
 
 ## Run module
 
