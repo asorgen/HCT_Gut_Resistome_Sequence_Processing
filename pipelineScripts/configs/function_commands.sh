@@ -22,3 +22,25 @@ run_pipeline() {
     
     cd -
 }
+
+# Check the number of completed jobs
+check_jobs() {
+    local cohort=$1
+    local read=$2
+    local dataset=${cohort}_${read}
+    local root=/projects/afodor_research3/asorgen/HCT_Gut_Resistome_Study
+    local pipeline_root=${root}/HCT_Gut_Resistome_Pipeline/sequence_processing
+    local data_root=${root}/HCT_Gut_Resistome_Data
+
+    if [ -n "$3" ]; then
+        local module=$3
+        local completed_dir=${data_root}/unprocessed/${cohort}/${dataset}/${module}_*/COMPLETE
+        local completed_samples=$(ls ${completed_dir} | wc -l)
+    else
+        local completed_dir=${data_root}/unprocessed/${cohort}/${dataset}/COMPLETE
+        local completed_samples=$(ls ${completed_dir} | wc -l)
+        local completed_samples=$(( completed_samples - 1 ))
+    fi
+    
+    echo $completed_samples
+}
