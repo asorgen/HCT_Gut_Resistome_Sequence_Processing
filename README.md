@@ -164,16 +164,20 @@ The wrapper scripts handle:
 Detailed documentation for each pipeline module:
 
 1. [Setup](manuals/setup.md)
-2. [**Pre-processing** metagenomic data](manuals/preprocessing.md)
-3. [Metagenomic **assembly**](manuals/assembly.md)
-4. [Assembly refinement and **evaluation**](manuals/evaluation.md)
-5. [Taxonomic classification with **Kraken2**](manuals/kraken2.md)
-6. [Metagenomic **binning**](manuals/binning.md)
-7. [Metagenomic bin **refinement**](manuals/refine.md)
-8. [Metagenomic bin **reassembly**](manuals/reassembly.md)
-9. [Taxonomic bin **classification**](manuals/classify_bins.md)
-10. [**Functional annotation** of bins](manuals/annotation.md)
-11. [**AMR detection**](manuals/amr_search.md)
+2. [**Pre-QC** quality assessment](manuals/pre_qc.md)
+3. [Sequence **deduplication**](manuals/deduplication.md)
+4. [Sequence **trimming** and quality filtering](manuals/sequence_trim.md)
+5. [**Host decontamination**](manuals/host_decontamination.md)
+6. [Metagenomic **assembly**](manuals/assembly.md)
+7. [Assembly refinement and **evaluation**](manuals/evaluation.md)
+8. [Taxonomic classification with **Kraken2**](manuals/kraken2.md)
+9. [Metagenomic **binning**](manuals/binning.md)
+10. [Metagenomic bin **refinement**](manuals/refine.md)
+11. [Metagenomic bin **reassembly**](manuals/reassembly.md)
+12. [Taxonomic bin **classification**](manuals/classify_bins.md)
+13. [**Functional annotation** of bins](manuals/annotation.md)
+14. [**AMR detection**](manuals/amr_search.md)
+15. [**RGI BWT** read-mapping AMR profiling](manuals/rgi_bwt.md)
 
 ---
 
