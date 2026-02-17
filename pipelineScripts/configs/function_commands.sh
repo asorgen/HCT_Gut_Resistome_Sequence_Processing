@@ -44,3 +44,24 @@ check_jobs() {
     
     echo $completed_samples
 }
+
+# Check the number of completed jobs
+run_summary() {
+    local cohort=$1
+    local read=$2
+    local dataset=${cohort}_${read}
+    local root=/projects/afodor_research3/asorgen/HCT_Gut_Resistome_Study
+    local pipeline_root=${root}/HCT_Gut_Resistome_Pipeline/sequence_processing
+    local data_root=${root}/HCT_Gut_Resistome_Data
+    cd $pipeline_root
+
+    local script="${pipeline_root}/pipelineScripts/scripts/post_scripts/pipeline_summary.sh"
+
+    if [ -n "$3" ]; then
+        $script -p $dataset -m $3
+    else
+        $script -p $dataset
+    fi
+    
+    cd -
+}

@@ -49,6 +49,13 @@ parser.add_argument(
     required=True,
     help="Minimum percent coverage."
 )
+parser.add_argument(
+    "--outdir", "-o",
+    type=str,
+    required=False,
+    default=None,
+    help="Output directory. If not provided, derived from folder path."
+)
 
 # %% Naming variables
 # Try to parse args, set defaults if running interactively
@@ -61,6 +68,7 @@ try:
     min_reads = args.mapped
     min_mapq = args.mapq
     min_cov = args.coverage
+    outdir = args.outdir
 except SystemExit:
     # Set default values for interactive development
     print("Running in interactive mode - using default values")
@@ -70,10 +78,12 @@ except SystemExit:
     min_reads = 5
     min_mapq = 0
     min_cov = 0
+    outdir = None
 
 alignment_folder = directory.split("/")[-1]
 aligner = alignment_folder.split("_")[0]
-pipeline_root_dir = os.path.dirname(os.path.dirname(directory))
+if outdir is None:
+    outdir = os.path.dirname(os.path.dirname(directory)) + "/" + pipeline + "_tables"
 
 # %% Importing and summarizing fastq files
 
@@ -164,9 +174,9 @@ gene_table_name = "_rgi_bwt_" + aligner + "_FPKM_R" + str(min_reads) + "_M" + st
 concat_output_name = "_rgi_bwt_" + aligner + "_output_R" + str(min_reads) + "_M" + str(min_mapq) + "_C" + str(min_cov) + ".tsv"
 hits_name = "_rgi_bwt_" + aligner + "_hits_R" + str(min_reads) + "_M" + str(min_mapq) + "_C" + str(min_cov) + ".tsv"
 
-table_outputFile = pipeline_root_dir + "/" + pipeline + "_tables/" + pipeline + gene_table_name
-concat_outputFile = pipeline_root_dir + "/" + pipeline + "_tables/" + pipeline + concat_output_name
-hits_outputFile = pipeline_root_dir + "/" + pipeline + "_tables/" + pipeline + hits_name
+table_outputFile = outdir + "/" + pipeline + gene_table_name
+concat_outputFile = outdir + "/" + pipeline + concat_output_name
+hits_outputFile = outdir + "/" + pipeline + hits_name
 
 
 
