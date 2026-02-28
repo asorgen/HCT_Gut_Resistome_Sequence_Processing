@@ -503,7 +503,7 @@ for pipeline in "${PIPELINES[@]}"; do
 		  python3 ${ps_path}/summarize_rgi_bwt.py \
 		  -f $module_dir \
 		  -l $pipeline \
-		  --mapped 5 --mapq 0 --coverage 0 \
+		  --mapped 5 --mapq 10 --coverage 80 \
 		  -r ${out}/${pipeline}_post-QC_report.tsv
 
 		  if [[ $? -ne 0 ]]; then error "Something went wrong. Exiting..."; fi
