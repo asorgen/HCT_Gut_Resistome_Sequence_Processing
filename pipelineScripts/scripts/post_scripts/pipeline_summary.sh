@@ -75,7 +75,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     -h|--help)
       show_help
-      exit 1
+      exit 0
       ;;
     *)
       echo "Unknown option: $1"
@@ -84,29 +84,6 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
-
-# --- Debug: print parsed values ---
-# echo "Parsed pipelines: ${PIPELINES[*]}"
-# if [[ ${#MODULES[@]} -gt 0 ]]; then
-#   echo "Parsed modules:   ${MODULES[*]}"
-# fi
-
-
-# Set up -----------------------------------------------------------------------------------------------------------
-	# Initialize variables
-	pipeline=""
-	modules=()
-
-	# Parse options
-		while [[ "$#" -gt 0 ]]; do
-		  case "$1" in
-		    -h | --help ) show_help; exit 0 ;;
-		    -p | --pipeline ) pipeline="$2"; shift 2 ;;
-		    -m | --modules ) modules+=("$2"); shift 2 ;;
-		    # -* ) echo "Unknown option: $1"; show_help; exit 1 ;;
-		    # * ) echo "Unexpected argument: $1"; show_help; exit 1 ;;
-		  esac
-		done
 
 module load anaconda3/2023.09
 source /apps/pkg/anaconda3/2023.09/etc/profile.d/conda.sh
@@ -169,6 +146,15 @@ if [[ ${#MODULES[@]} -gt 0 ]]; then
 	    if [[ "$module" == "bin_gene_profiling" || "$module" == "all" ]]; then bin_gene_profiling=true; fi
 	    if [[ "$module" == "all" ]]; then all=true; fi
 	done
+fi
+
+# If all modules are requested, enable every module flag
+if $all; then
+	read_qc=true; evaluation=true
+	kraken2=true; metaphlan4=true
+	binning=true; refine_bins=true; reassemble_bins=true
+	classify_bins=true; annotate_bins=true
+	amr_detection=true; asm_gene_profiling=true; bin_gene_profiling=true; shortbred=true; rgi_bwt=true
 fi
 
 for pipeline in "${PIPELINES[@]}"; do
@@ -496,7 +482,7 @@ for pipeline in "${PIPELINES[@]}"; do
 
 	# rgi_bwt
 		module_dir=5.4_rgi_bwt
-		if $rgi_bwt; then 
+		if $rgi_bwt; then
 			SECONDS=0
 		  H2 "RGI bwt"
 
