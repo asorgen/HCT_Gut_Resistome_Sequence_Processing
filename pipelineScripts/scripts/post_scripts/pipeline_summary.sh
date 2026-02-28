@@ -495,7 +495,7 @@ for pipeline in "${PIPELINES[@]}"; do
 		        -f ${aligner_dir} \
 		        -l $pipeline \
 		        -o ${out} \
-		        --mapped 5 --mapq 0 --coverage 0 \
+		        --mapped 5 --mapq 10 --coverage 80 \
 		        -r ${out}/${pipeline}_post-QC_report.tsv
 
 		      if [[ $? -ne 0 ]]; then error "Something went wrong with RGI bwt ${aligner}. Exiting..."; fi
