@@ -486,15 +486,21 @@ for pipeline in "${PIPELINES[@]}"; do
 			SECONDS=0
 		  H2 "RGI bwt"
 
-		  python3 ${ps_path}/summarize_rgi_bwt.py \
-		  -f $module_dir \
-		  -l $pipeline \
-		  --mapped 5 --mapq 10 --coverage 80 \
-		  -r ${out}/${pipeline}_post-QC_report.tsv
+		  for aligner_dir in ${module_dir}/kma_output ${module_dir}/bwa_output; do
+		    if [[ -d ${aligner_dir} ]]; then
+		      aligner=$(basename ${aligner_dir} | cut -d'_' -f1)
+		      H3 "${aligner}"
 
-		  if [[ $? -ne 0 ]]; then error "Something went wrong. Exiting..."; fi
+		      python3 ${ps_path}/summarize_rgi_bwt.py \
+		        -f ${aligner_dir} \
+		        -l $pipeline \
+		        -o ${out} \
+		        --mapped 5 --mapq 10 --coverage 80 \
+		        -r ${out}/${pipeline}_post-QC_report.tsv
 
-			mv ${module_dir}/${pipeline}_rgi_bwt_RPKM.tsv ${out}/
+		      if [[ $? -ne 0 ]]; then error "Something went wrong with RGI bwt ${aligner}. Exiting..."; fi
+		    fi
+		  done
 
 			comment "COMPLETE :)"
 			duration=$SECONDS
