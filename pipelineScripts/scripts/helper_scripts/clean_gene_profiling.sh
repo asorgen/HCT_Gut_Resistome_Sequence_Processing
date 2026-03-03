@@ -89,7 +89,7 @@ EOF
 	fi
 
 
-root=/projects/afodor_research3/asorgen/HCT_Gut_Resistome_Pipeline/sequence_processing
+root=/projects/afodor_research3/${USER}/HCT_Gut_Resistome_Pipeline/sequence_processing
 # pipelines=(Duke_short Duke_long Duke_hybrid UNC_short)
 
 for pipeline in "${pipelines[@]}"; do
@@ -114,7 +114,8 @@ for pipeline in "${pipelines[@]}"; do
 
 			for ID in ${sampleIDs}; do
 				
-				if [[ $ID == "logs" || $ID == "D21309D98" || $ID == "COMPLETE" ]]; then continue; fi
+				if [[ $ID == "logs" || $ID == "COMPLETE" ]]; then continue; fi
+			if [[ -n "${exclude_ids}" ]] && echo "${exclude_ids}" | grep -qw "$ID"; then continue; fi
 				
 				prodigalFile=${dir}/${ID}/${ID}_genes.faa
 				baktaDir=${dir}/${ID}/bakta

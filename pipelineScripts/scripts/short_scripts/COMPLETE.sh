@@ -26,7 +26,7 @@
     # Maximum allowed runtime of job (--time=<time>; -t <time>; SBATCH_TIMELIMIT)
 
 
-source /users/asorgen/.bashrc
+source ${HOME}/.bashrc
 source $config_file
 source $pipelineConfig
 

@@ -30,7 +30,7 @@
 
 #SBATCH --mail-user=${email}
 
-source /users/asorgen/.bashrc
+source ${HOME}/.bashrc
 metawrap_config=$(which config-metawrap)
 source $metawrap_config
 
@@ -169,7 +169,7 @@ H1 "Bracken"
     module load anaconda3/2023.09
 
     for file in ${k_out}/*.kreport; do
-        python3 /users/asorgen/PROGRAMS/Bracken-2.7/src/est_abundance.py -i $file -k ${KRAKEN2_DB}/database150mers.kmer_distrib --level S -o ${file%.*}.bracken.out
+        python3 ${HOME}/PROGRAMS/Bracken-2.7/src/est_abundance.py -i $file -k ${KRAKEN2_DB}/database150mers.kmer_distrib --level S -o ${file%.*}.bracken.out
         if [[ $? -ne 0 ]]; then error "Something went wrong while running Bracken. Exiting..."; fi
     done
 

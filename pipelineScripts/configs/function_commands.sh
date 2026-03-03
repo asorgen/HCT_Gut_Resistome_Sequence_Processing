@@ -4,7 +4,7 @@ run_pipeline() {
     read=$2
     dataset=${cohort}_${read}
     export version=$(date +"%Y.%m.%d")
-    root=/projects/afodor_research3/asorgen/HCT_Gut_Resistome_Study
+    root=/projects/afodor_research3/${USER}/HCT_Gut_Resistome_Study
     pipeline_root=${root}/HCT_Gut_Resistome_Pipeline/sequence_processing
     data_root=${root}/HCT_Gut_Resistome_Data
     cd $pipeline_root
@@ -28,7 +28,7 @@ check_jobs() {
     local cohort=$1
     local read=$2
     local dataset=${cohort}_${read}
-    local root=/projects/afodor_research3/asorgen/HCT_Gut_Resistome_Study
+    local root=/projects/afodor_research3/${USER}/HCT_Gut_Resistome_Study
     local pipeline_root=${root}/HCT_Gut_Resistome_Pipeline/sequence_processing
     local data_root=${root}/HCT_Gut_Resistome_Data
 
@@ -50,7 +50,7 @@ run_summary() {
     local cohort=$1
     local read=$2
     local dataset=${cohort}_${read}
-    local root=/projects/afodor_research3/asorgen/HCT_Gut_Resistome_Study
+    local root=/projects/afodor_research3/${USER}/HCT_Gut_Resistome_Study
     local pipeline_root=${root}/HCT_Gut_Resistome_Pipeline/sequence_processing
     local data_root=${root}/HCT_Gut_Resistome_Data
     cd $pipeline_root

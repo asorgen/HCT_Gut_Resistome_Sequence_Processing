@@ -5,10 +5,10 @@
 #SBATCH --ntasks-per-node=48
 #SBATCH --mem=1200GB 
 #SBATCH --time=48:00:00 
-#SBATCH --mail-user=asorgen@uncc.edu
+##SBATCH --mail-user=${email}
 ##SBATCH --mail-type=END,FAIL
 #SBATCH --job-name=test
-#SBATCH --output=/projects/afodor_research3/asorgen/HCT_Gut_Resistome_Pipeline/sequence_processing/LONG/${moduleDir}/D21309D29/testing.log
+##SBATCH --output=${moduleDir}/${ID}/testing.log
 
 # H1 "Job Context"
     OMP_NUM_THREADS=$SLURM_NTASKS

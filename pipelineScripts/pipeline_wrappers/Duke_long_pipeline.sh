@@ -55,7 +55,7 @@ cohort=Duke
 read=long
 dataset=${cohort}_${read}
 
-source /users/asorgen/.bashrc
+source ${HOME}/.bashrc
 export pipelineConfig=${dataset}-read.config
 source pipelineScripts/configs/${pipelineConfig}
 
@@ -72,7 +72,7 @@ export readType
     H3 () { print_header.py "$1" "H3"; }
     comment () { print_header.py "$1" "#"; }
     error () { echo $1; exit 1; }
-    job_lookup() { squeue -u asorgen --format='%.18i   %.9P   %.40j   %.1T   %.12M   %.10l   %.6D   %R' | awk -v id="$jobID" 'match($3,id) {print $1}'; }
+    job_lookup() { squeue -u ${USER} --format='%.18i   %.9P   %.40j   %.1T   %.12M   %.10l   %.6D   %R' | awk -v id="$jobID" 'match($3,id) {print $1}'; }
     module_setup() {
         script=$1
         

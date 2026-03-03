@@ -83,8 +83,7 @@
         CLEAN_UP_DEP=()
         
         module=0
-        # if [[ $ID == "D21309D98" ]]; then continue; fi
-        if [[ $ID == "D21309D98" || $ID == "D13004PRE" ]]; then continue; fi
+        if echo "${exclude_ids}" | grep -qw "$ID"; then continue; fi
         if [[ $count -ge 10 ]]; then continue; fi
 
         ##- 0.1 Pre-QC

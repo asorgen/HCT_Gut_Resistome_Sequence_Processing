@@ -28,9 +28,9 @@
 # Maximum allowed runtime of job (--time=<time>; -t <time>; SBATCH_TIMELIMIT)
 #-----------------------------------------------
 
-#SBATCH --mail-user=asorgen@uncc.edu
+##SBATCH --mail-user=${email}
 
-source /users/asorgen/.bashrc
+source ${HOME}/.bashrc
 config_file=$(which config-metawrap)
 source $config_file
 

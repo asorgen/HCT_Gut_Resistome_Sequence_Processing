@@ -29,9 +29,9 @@
     # Maximum allowed runtime of job (--time=<time>; -t <time>; SBATCH_TIMELIMIT)
     #-----------------------------------------------
 
-#SBATCH --mail-user=asorgen@uncc.edu
+##SBATCH --mail-user=${email}
 
-source /users/asorgen/.bashrc
+source ${HOME}/.bashrc
 # config_file=$(which config-metawrap)
 # source $config_file
 
@@ -77,7 +77,7 @@ H2 "[ Start ]"
 /bin/date
 SECONDS=0
 
-export PATH="/users/asorgen/PROGRAMS/metaWRAP/bin/metawrap-scripts/:$PATH"
+export PATH="${HOME}/PROGRAMS/metaWRAP/bin/metawrap-scripts/:$PATH"
 
 func="OPERA-MS Assembly"
     H1 "$func"
@@ -85,7 +85,7 @@ func="OPERA-MS Assembly"
     export PERL5LIB="$HOME/perl5/lib/perl5"
     module load R/4.2.2
 
-    perl /users/asorgen/PROGRAMS/OPERA-MS/OPERA-MS.pl \
+    perl ${HOME}/PROGRAMS/OPERA-MS/OPERA-MS.pl \
         --num-processors 32 \
         --short-read1 ${clean_readDir}/${ID}_1.fastq \
         --short-read2 ${clean_readDir}/${ID}_2.fastq \

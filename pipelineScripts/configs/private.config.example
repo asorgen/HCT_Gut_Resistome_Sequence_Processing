@@ -1,0 +1,31 @@
+#!/bin/bash
+# =============================================================================
+# Private configuration for HCT_Gut_Resistome_Pipeline
+# =============================================================================
+# This file is a template. Copy it to private.config and fill in your values:
+#
+#   cp private.config.example private.config
+#
+# private.config is listed in .gitignore and will NOT be committed.
+# private.config.example IS committed and shows the expected structure.
+#
+# Source at the top of each pipeline config:
+#   source "$(dirname "${BASH_SOURCE[0]}")/private.config"
+# =============================================================================
+
+# HPC account ------------------------------------------------------------------
+# Your HPC username and the corresponding home/project/scratch directories.
+HPC_USER=your_username
+HPC_HOME=/users/your_username
+HPC_PROJECTS=/projects/your_lab_group/your_username
+HPC_SCRATCH=/scratch/your_username
+
+# Email addresses for SBATCH notifications ------------------------------------
+# Addresses to receive job status emails (--mail-user in SBATCH options).
+email_short=your_email@institution.edu    # short-read pipeline (Duke + UNC)
+email_long=your_email@institution.edu     # long-read and hybrid pipeline
+
+# Sample IDs to exclude from pipeline processing (space-separated) ------------
+# These IDs will be skipped in all pipeline wrappers and helper scripts.
+# Add any samples that failed QC or should otherwise be excluded.
+exclude_ids="SAMPLE_ID_1 SAMPLE_ID_2"

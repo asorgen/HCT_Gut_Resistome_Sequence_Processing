@@ -12,6 +12,6 @@
 brackenDir=$1
 readType=$2
 
-python3 /users/asorgen/PROGRAMS/Bracken-2.7/analysis_scripts/combine_bracken_outputs.py \
+python3 ${HOME}/PROGRAMS/Bracken-2.7/analysis_scripts/combine_bracken_outputs.py \
 --files ${brackenDir}/*.out \
 -o ${brackenDir}/${readType}_bracken_counts.tsv

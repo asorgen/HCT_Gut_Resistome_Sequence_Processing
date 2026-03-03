@@ -11,7 +11,7 @@
     pFunc () { echo $1; echo; }
 
 # Find out if the job is already queued
-    job_lookup() { squeue -u asorgen --format='%.18i   %.9P   %.40j   %.1T   %.12M   %.10l   %.6D   %R' | awk -v id="$jobID" 'match($3,id) {print $1}'; }
+    job_lookup() { squeue -u ${HPC_USER} --format='%.18i   %.9P   %.40j   %.1T   %.12M   %.10l   %.6D   %R' | awk -v id="$jobID" 'match($3,id) {print $1}'; }
 
 # Set up module directory, variables, and flags
     module_setup() {

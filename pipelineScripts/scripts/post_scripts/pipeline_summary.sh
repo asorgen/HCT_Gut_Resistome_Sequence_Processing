@@ -9,7 +9,7 @@
 #SBATCH --mem=8GB
 #SBATCH --time=01:00:00
 
-source /users/asorgen/.bashrc
+source ${HOME}/.bashrc
 config_file=$(which config-metawrap)
 source $config_file
 # source short-read.config
