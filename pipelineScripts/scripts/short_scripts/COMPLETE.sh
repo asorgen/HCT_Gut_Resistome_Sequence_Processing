@@ -92,7 +92,8 @@ H1 "Variables"
     echo -e "SampleID (ID): ${ID}"
 
     H2 "Output"
-        out=${moduleDir}
+        out=${datasetDir}/COMPLETE
+        mkdir -p ${out}
         echo ${out}/${ID}
 
 
