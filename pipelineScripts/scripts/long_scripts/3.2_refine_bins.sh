@@ -12,11 +12,11 @@
     #     7. Makes completion and contamination ranking plots for all refinement iterations (plot_binning_results.py).
     #     8. Makes completion and contamination ranking plots for the final output (plot_binning_results.py).
 
-    # It is important to note that it has been designed for a specific working directory. 
-    # Therefore, the reproduction of the results will require small modifications of the script 
+    # It is important to note that it has been designed for a specific working directory.
+    # Therefore, the reproduction of the results will require small modifications of the script
     # or the adaptation of your working directory.
 
-    # Created on Nov 7, 2024
+    # Created on March 2026
 
     # @author: Alicia Sorgen - UNC Charlotte Dept of Bioinformatics and Genomics
 
@@ -28,7 +28,7 @@
     # Job name (--job-name=<name>; -J <name>; SBATCH_JOB_NAME)
     # Path to file storing text output. (--output=<filename_pattern>; -o <name>; SBATCH_OUTPUT)
     # Node count required for the job (--nodes=<count>; -N <count>)
-    # Request that ntasks be invoked on each node. (--ntasks-per-node=<ntasks>)
+    # Request that cpus per task (--cpus-per-task=<ncpus>)
     # Memory required per node (--mem=<MB>[units]; SLURM_MEM_PER_NODE)
     # Notify user by email when certain event types occur. (--mail-type=<type>) | Options: NONE, BEGIN, END, FAIL, REQUEUE, ALL
     # User to receive email notification of state changes as defined by --mail-type. (--mail-user=<user>)
@@ -68,10 +68,9 @@
         comment "Running on host: `hostname`"
 
         Total_Gb=$(( SLURM_MEM_PER_NODE / 1024 ))
-
         JobTime=$(squeue -h -j $SLURM_JOBID -o "%l")
 
-        echo 
+        echo
         comment "----- Resources Requested -----"
         comment "Nodes:            $SLURM_NNODES"
         comment "Cores / node:     $SLURM_CPUS_PER_TASK"
@@ -94,7 +93,7 @@
             if [[ ! -d ${out} ]]; then mkdir -p $out; fi
 
             echo -e "${out}/metawrap_${c}_${x}_bins"
-            if [[ ! -d ${moduleDir}/COMPLETE ]]; then mkdir ${moduleDir}/COMPLETE; fi
+            if [[ ! -d ${moduleDir}/COMPLETE ]]; then mkdir -p ${moduleDir}/COMPLETE; fi
 
     H2 "[ Start ]"
     /bin/date
@@ -103,8 +102,8 @@
     Intermediate_files=()
 
 
-func="Bin Refinement"
-    H1 "Bin refinement (>${c}% completeness, <${x}% contamination"
+STEP="Bin Refinement"
+    H1 "Bin refinement (>${c}% completeness, <${x}% contamination)"
 
     outputFile=${out}/metawrap_${c}_${x}_bins.stats
     if [[ -s "$outputFile" ]]; then
@@ -112,12 +111,11 @@ func="Bin Refinement"
     else
         start=$SECONDS
         #------------
-        
+
         module load anaconda3/2023.09
         source /apps/pkg/anaconda3/2023.09/etc/profile.d/conda.sh
         conda init
         conda activate metawrap-env
-        checkm data setRoot $CHECKM_DB
 
         metawrap bin_refinement \
             -o ${out} \
@@ -134,21 +132,20 @@ func="Bin Refinement"
         end=$SECONDS; duration=$(( end-start ))
 
         if [[ -s "$outputFile" ]]; then
-            H2 "Yipee! $func Complete"
-            comment "$func: $(elapsed_time "$duration")"
+            H2 "Yipee! $STEP Complete"
+            comment "$STEP: $(elapsed_time "$duration")"
         fi
     fi
-    
+    step_completion "${outputFile}"
+
 
 echo -e "\nmetaWRAP bins:"; awk -v com="$c" -v con="$x" '$2 > com && $3 < con' ${out}/metawrap_${c}_${x}_bins.stats | wc -l
 echo -e "\nMetaBat2 bins:"; awk -v com="$c" -v con="$x" '$2 > com && $3 < con' ${out}/metabat2_bins.stats | wc -l
 echo -e "\nMaxBin2 bins:"; awk -v com="$c" -v con="$x" '$2 > com && $3 < con' ${out}/maxbin2_bins.stats | wc -l
 echo -e "\nCONCOCT bins:"; awk -v com="$c" -v con="$x" '$2 > com && $3 < con' ${out}/concoct_bins.stats | wc -l
 
-# Completion status
-    if [[ -s ${moduleDir}/${ID}/metawrap_${c}_${x}_bins.stats ]]; then
-        touch ${moduleDir}/COMPLETE/${ID}
-    fi
+# Completion
+    module_completion
 
 H1 "PIPELINE COMPLETE :)"
 duration=$SECONDS

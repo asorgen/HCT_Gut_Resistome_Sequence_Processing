@@ -142,6 +142,9 @@ for name in files:
     
 
 # %% Concatenate all at once (much faster than repeated appending)
+if not df_list:
+    print("No files passed filters. Exiting...")
+    import sys; sys.exit(0)
 full_df = pd.concat(df_list, ignore_index=True)
 
 # %% Create abundance table

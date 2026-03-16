@@ -2,22 +2,25 @@
 
 # Description --------------------------------------------------------------------------------------------------------------
     # This script does the following:
-    # 1. Performs functional annotation of bin sets with Prokka using metaWRAP's annotate_bins module:
-    #     1. Shortens contig names to run Prokka (shorten_contig_names.py).
-    #     2. Runs Prokka. 
-    #     3. Pulls out functional annotations for each bin.
-    #     4. Filters the translated genes.
-    #     5. Filters the untranslated genes.
+    # 1. ORF prediction on the filtered assembly with Prodigal
+    # 2. Functional annotation of predicted proteins with Bakta
+    # 3. AMR annotation of predicted proteins with AMRFinderPlus
+    # 4. AMR annotation of predicted proteins with RGI
+    # 5. Gene list extraction
+    # 6. Merges AMRFinder, RGI, and Bakta results into a unified gene annotations table
 
-    # It is important to note that it has been designed for a specific working directory. 
-    # Therefore, the reproduction of the results will require small modifications of the script 
+    # It is important to note that it has been designed for a specific working directory.
+    # Therefore, the reproduction of the results will require small modifications of the script
     # or the adaptation of your working directory.
 
-    # Created on Nov 10, 2025
+    # Created on March 2026
 
     # @author: Alicia Sorgen - UNC Charlotte Dept of Bioinformatics and Genomics
 
     # Version: 1
+
+    # Input: ${evaluationDir}/${ID}_final_assembly.fasta (nucleotide FASTA from 1.2_evaluation.sh)
+    # Output: ${moduleDir}/${ID}/${ID}_gene_annotations.tsv
 
 # Slurm Resource Options ---------------------------------------------------------------------------------------------------
 
@@ -25,7 +28,7 @@
     # Job name (--job-name=<name>; -J <name>; SBATCH_JOB_NAME)
     # Path to file storing text output. (--output=<filename_pattern>; -o <name>; SBATCH_OUTPUT)
     # Node count required for the job (--nodes=<count>; -N <count>)
-    # Request that ntasks be invoked on each node. (--ntasks-per-node=<ntasks>)
+    # Request that cpus per task (--cpus-per-task=<ncpus>)
     # Memory required per node (--mem=<MB>[units]; SLURM_MEM_PER_NODE)
     # Notify user by email when certain event types occur. (--mail-type=<type>) | Options: NONE, BEGIN, END, FAIL, REQUEUE, ALL
     # User to receive email notification of state changes as defined by --mail-type. (--mail-user=<user>)
@@ -47,20 +50,23 @@
     pFunc () { echo $1; echo; }
 
 # Print script information to log ------------------------------------------------------------------------------------------
-    H1 "Description: 5.1_NT_amr_detection.sh"
+    H1 "Description: 5.5_AA_amr_assembly.sh"
         echo -e "This script does the following:"
-        echo -e "1. Performs AMR gene annotation of .fna files using AMRFinderPlus"
-        echo -e "2. Performs AMR gene annotation of .fna files using RGI"
+        echo -e "1. ORF prediction with Prodigal"
+        echo -e "2. Functional annotation with Bakta"
+        echo -e "3. AMR annotation with AMRFinderPlus"
+        echo -e "4. AMR annotation with RGI"
+        echo -e "5. Gene list extraction"
+        echo -e "6. Merges results into unified gene annotations table"
 
     H1 "Job Context"
         comment "Job: $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
         comment "Running on host: `hostname`"
 
         Total_Gb=$(( SLURM_MEM_PER_NODE / 1024 ))
-
         JobTime=$(squeue -h -j $SLURM_JOBID -o "%l")
 
-        echo 
+        echo
         comment "----- Resources Requested -----"
         comment "Nodes:            $SLURM_NNODES"
         comment "Cores / node:     $SLURM_CPUS_PER_TASK"
@@ -73,18 +79,11 @@
         inputType=asm
 
         H2 "Input"
-            if [[ $inputType == "asm" ]]; then
-                inputFile=${evaluationDir}/${ID}_final_assembly.fasta
-                echo -e $inputFile
-            fi
-
-            if [[ $inputType == "bin" ]]; then
-                echo -e "${reassemDir}/${ID}/reassembled_bins"
-            fi
-
+            inputFile=${evaluationDir}/${ID}_final_assembly.fasta
+            echo -e $inputFile
 
         H2 "Output"
-            if [[ ! -d ${moduleDir}/${ID} ]]; then mkdir -p ${moduleDir}/${ID} ; fi
+            if [[ ! -d ${moduleDir}/${ID} ]]; then mkdir -p ${moduleDir}/${ID}; fi
 
             prodigal_output=${moduleDir}/${ID}/${ID}_genes.faa; echo -e "${prodigal_output}"
             bakta_output=${moduleDir}/${ID}/bakta/${ID}.tsv; echo -e "${bakta_output}"
@@ -93,83 +92,38 @@
             gene_list=${moduleDir}/$ID/${ID}_geneslist.tsv; echo -e "${gene_list}"
             outputFile=${moduleDir}/$ID/${ID}_gene_annotations.tsv; echo -e "${outputFile}"
 
-            if [[ ! -d ${moduleDir}/COMPLETE ]]; then mkdir ${moduleDir}/COMPLETE; fi
+            if [[ ! -d ${moduleDir}/COMPLETE ]]; then mkdir -p ${moduleDir}/COMPLETE; fi
 
     H2 "[ Start ]"
     /bin/date
     SECONDS=0
-    Complete_tag=("$outputFile")
+    Complete_tag=()
     Intermediate_files=()
 
-# Load environments --------------------------------------------------------------------------------------------------------
-    # module load anaconda3/2023.09
-    # source $miniforge_init
-    # source /apps/pkg/anaconda3/2023.09/etc/profile.d/conda.sh
-    # conda activate metawrap-env
 
+STEP="Prodigal"
+    H1 "$STEP"
 
-
-# Run functions ------------------------------------------------------------------------------------------------------------
-
-func="Prodigal"
-    H1 "$func"
-
-    
     if [[ -s "$prodigal_output" ]]; then
         comment "Output file already found. Skipping this command..."
     else
         start=$SECONDS
         #------------
 
-        if [[ $inputType == "asm" ]]; then
-            prodigal -i ${evaluationDir}/${ID}_final_assembly.fasta -a ${moduleDir}/${ID}/${ID}_genes.faa -q
-            if [[ $? -ne 0 ]]; then error "Something went wrong with $func. Exiting"; fi
-        fi
-
-        if [[ $inputType == "bin" ]]; then
-            
-            cat "${reassemDir}/${ID}/reassembled_bins"/*.fa > "${moduleDir}/${ID}/${ID}_all_reassembled_bins.fa"
-
-            prodigal -i ${moduleDir}/${ID}/${ID}_all_reassembled_bins.fa -a ${moduleDir}/${ID}/${ID}_genes_original.faa -q
-
-            in=${moduleDir}/${ID}/${ID}_genes_original.faa
-            out=${moduleDir}/${ID}/${ID}_genes.faa
-            map=${moduleDir}/${ID}/${ID}_genes.rename.map
-
-            awk -v MAP="$map" '
-              BEGIN{ OFS=""; }
-              /^>/{
-                full=$0
-                name=substr($0,2); sub(/ .*/,"",name)          # header name up to first space
-                if (++c[name] > 1){
-                  new = name "_dup" c[name]
-                  print name "\t" new >> MAP
-                  print ">" new
-                } else {
-                  print name "\t" name >> MAP
-                  print full
-                }
-                next
-              }
-              { print }
-            ' "$in" > "$out"
-
-            if [[ $? -ne 0 ]]; then error "Something went wrong with $func. Exiting"; fi
-        fi
+        prodigal -i ${inputFile} -a ${moduleDir}/${ID}/${ID}_genes.faa -q
+        if [[ $? -ne 0 ]]; then error "Something went wrong with $STEP. Exiting"; fi
 
         #------------
         end=$SECONDS; duration=$(( end-start ))
-
     fi
     step_completion "${prodigal_output}"
 
 
-func="Bakta"
-    H1 "$func"
+STEP="Bakta"
+    H1 "$STEP"
     module load anaconda3/2023.09
     source $conda_init
 
-    
     bakta_inf=${moduleDir}/${ID}/bakta/${ID}.inference.tsv
     if [[ -s "$bakta_output" ]]; then
         comment "Output file already found. Skipping this command..."
@@ -181,32 +135,28 @@ func="Bakta"
 
         echo -e "Activate the Bakta conda environment"; conda activate $BAKTA_ENV
         echo -e "Export the Bakta db path: $BAKTA_DB"; export BAKTA_DB
-        CMD="bakta_proteins --db ${BAKTA_DB} --output ${moduleDir}/${ID}/bakta --prefix ${ID} --threads $SLURM_CPUS_PER_TASK ${moduleDir}/${ID}/${ID}_genes.faa "
+        CMD="bakta_proteins --db ${BAKTA_DB} --output ${moduleDir}/${ID}/bakta --prefix ${ID} --threads $SLURM_CPUS_PER_TASK ${moduleDir}/${ID}/${ID}_genes.faa"
         echo $CMD
         $CMD
 
-        if [[ $? -ne 0 ]]; then error "Something went wrong with $func. Exiting"; fi
+        if [[ $? -ne 0 ]]; then error "Something went wrong with $STEP. Exiting"; fi
 
         conda deactivate
 
-
         #------------
         end=$SECONDS; duration=$(( end-start ))
-
         if [[ -s "$bakta_output" ]]; then
-            H2 "Yipee! $func Complete"
-            comment "$func: $(elapsed_time "$duration")"
+            H2 "Yipee! $STEP Complete"
+            comment "$STEP: $(elapsed_time "$duration")"
         fi
     fi
     step_completion "${bakta_output}"
 
 
-func="AMRFinderPlus"
-    H1 "$func"
+STEP="AMRFinderPlus"
+    H1 "$STEP"
     source $miniforge_init
 
-    # amr_output=${argDetect}/AMR/${ID}.amrfinder.txt
-    
     if [[ -s "$amr_output" ]]; then
         comment "Output file already found. Skipping this command..."
     else
@@ -215,7 +165,6 @@ func="AMRFinderPlus"
 
         module load blast/2.11.0+
         module load hmmer/3.3.2
-        # conda init
         conda activate $AMRFINDER_ENV
 
         amrfinder \
@@ -223,7 +172,7 @@ func="AMRFinderPlus"
         -p ${moduleDir}/${ID}/${ID}_genes.faa \
         -o ${moduleDir}/${ID}/${ID}.amrfinder.tsv
 
-        if [[ $? -ne 0 ]]; then error "Something went wrong with $func. Exiting"; fi
+        if [[ $? -ne 0 ]]; then error "Something went wrong with $STEP. Exiting"; fi
 
         conda deactivate
         module unload blast/2.11.0+
@@ -231,18 +180,16 @@ func="AMRFinderPlus"
 
         #------------
         end=$SECONDS; duration=$(( end-start ))
-
         if [[ -s "$amr_output" ]]; then
-            H2 "Yipee! $func Complete"
-            comment "$func: $(elapsed_time "$duration")"
+            H2 "Yipee! $STEP Complete"
+            comment "$STEP: $(elapsed_time "$duration")"
         fi
     fi
     step_completion "${amr_output}"
 
 
-func="RGI"
-    H1 "$func"
-    # rgi_output=${argDetect}/RGI/${ID}.rgi.txt
+STEP="RGI"
+    H1 "$STEP"
     rgi_output=${moduleDir}/$ID/${ID}.rgi.txt
     if [[ -s "$rgi_output" ]]; then
         comment "Output file already found. Skipping this command..."
@@ -264,24 +211,23 @@ func="RGI"
         --clean \
         -n $SLURM_CPUS_PER_TASK
 
-        if [[ $? -ne 0 ]]; then error "Something went wrong with $func. Exiting"; fi
+        if [[ $? -ne 0 ]]; then error "Something went wrong with $STEP. Exiting"; fi
 
         conda deactivate
         module unload blast/2.11.0+
 
         #------------
         end=$SECONDS; duration=$(( end-start ))
-
         if [[ -s "$rgi_output" ]]; then
-            H2 "Yipee! $func Complete"
-            comment "$func: $(elapsed_time "$duration")"
+            H2 "Yipee! $STEP Complete"
+            comment "$STEP: $(elapsed_time "$duration")"
         fi
     fi
     step_completion "${rgi_output}"
 
 
-func="Gene list"
-    H1 "$func"
+STEP="Gene list"
+    H1 "$STEP"
     gene_list=${moduleDir}/$ID/${ID}_geneslist.tsv
     if [[ -s "$gene_list" ]]; then
         comment "Output file already found. Skipping this command..."
@@ -291,29 +237,26 @@ func="Gene list"
 
         grep "^>" ${moduleDir}/${ID}/${ID}_genes.faa | awk '{print $1}' | sed 's/>//' > ${moduleDir}/$ID/${ID}_geneslist.tsv
 
-        if [[ $? -ne 0 ]]; then error "Something went wrong with $func. Exiting"; fi
+        if [[ $? -ne 0 ]]; then error "Something went wrong with $STEP. Exiting"; fi
 
         #------------
         end=$SECONDS; duration=$(( end-start ))
-
         if [[ -s "$gene_list" ]]; then
-            H2 "Yipee! $func Complete"
-            comment "$func: $(elapsed_time "$duration")"
+            H2 "Yipee! $STEP Complete"
+            comment "$STEP: $(elapsed_time "$duration")"
         fi
     fi
     step_completion "${gene_list}"
 
 
-func="Annotate genes using AMRFinder, RGI and Bakta results"
-    H1 "$func"
-    
+STEP="Annotate genes using AMRFinder, RGI and Bakta results"
+    H1 "$STEP"
+
     if [[ -s "$outputFile" ]]; then
         comment "Output file already found. Skipping this command..."
     else
         start=$SECONDS
         #------------
-
-        # python ${ScriptPath}/helper_scripts/00_processgenes.py $gene_list $amr_output $rgi_output $bakta_output $outputFile
 
         python ${ScriptPath}/helper_scripts/00_processgenes.py \
         --genes $gene_list \
@@ -322,21 +265,20 @@ func="Annotate genes using AMRFinder, RGI and Bakta results"
         --bakta $bakta_output \
         --output $outputFile
 
-        if [[ $? -ne 0 ]]; then error "Something went wrong with $func. Exiting"; fi
+        if [[ $? -ne 0 ]]; then error "Something went wrong with $STEP. Exiting"; fi
 
         #------------
         end=$SECONDS; duration=$(( end-start ))
-
         if [[ -s "$outputFile" ]]; then
-            H2 "Yipee! $func Complete"
-            comment "$func: $(elapsed_time "$duration")"
+            H2 "Yipee! $STEP Complete"
+            comment "$STEP: $(elapsed_time "$duration")"
         fi
     fi
     step_completion "${outputFile}"
 
 # Completion
     output_exists=$(test_for_output "${Complete_tag[@]}")
-    if $output_exists; then 
+    if $output_exists; then
         touch ${moduleDir}/COMPLETE/$ID
 
         # Remove intermediate files

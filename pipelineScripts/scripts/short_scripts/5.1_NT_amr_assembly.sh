@@ -173,6 +173,8 @@ if ! all_output_exists; then
             module load diamond/2.0.9
             source $RGI_ENV
 
+            rgi load --card_json $CARD_DB/card.json
+
             rgi main \
                 -i $inputFile \
                 -t contig \

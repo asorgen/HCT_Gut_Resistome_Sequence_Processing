@@ -99,7 +99,7 @@
     H2 "[ Start ]"
     /bin/date
     SECONDS=0
-    Complete_tag=()
+    Complete_tag=("$outputFile")
     Intermediate_files=()
 
 # Load environments --------------------------------------------------------------------------------------------------------
@@ -259,8 +259,10 @@ func="RGI"
         start=$SECONDS
         #------------
 
-        module load diamond/2.0.9
+        module load blast/2.11.0+
         source $RGI_ENV
+
+        rgi load --card_json $CARD_DB/card.json
 
         tr -d "*" < ${moduleDir}/${ID}/${ID}_genes.faa > ${moduleDir}/${ID}/${ID}_genes_rgi.faa
         substep_completion "${moduleDir}/${ID}/${ID}_genes_rgi.faa"
@@ -276,7 +278,7 @@ func="RGI"
         substep_completion "${moduleDir}/${ID}/${ID}.rgi.json"
 
         conda deactivate
-        module unload diamond/2.0.9
+        module unload blast/2.11.0+
 
         #------------
         end=$SECONDS; duration=$(( end-start ))

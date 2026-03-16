@@ -82,16 +82,18 @@
                     first_ID
                     H3 "$header3"
                     Current_Job=$(sbatch \
+                        --chdir=${datasetDir} \
                         $hpc_opts \
                         --job-name=${jobID} -o ${logDir}/${ID}.%A.log ${moduleScriptPath}/${script})
                     echo $Current_Job
                     echo "[ Log file ] -> ${dataset}/${logDir}/${ID}.${Current_Job##* }.log"
-                else                    
+                else
                     H3 "$header3"
                     # echo -e "sbatch --dependency=afterok:${dependencies} \
                     #     $hpc_opts \
                     #     --job-name=${jobID} -o ${logDir}/${ID}.%A.log ${moduleScriptPath}/${script}"
                     Current_Job=$(sbatch --dependency=afterok:${dependencies} \
+                        --chdir=${datasetDir} \
                         $hpc_opts \
                         --job-name=${jobID} -o ${logDir}/${ID}.%A.log ${moduleScriptPath}/${script})
                     echo $Current_Job

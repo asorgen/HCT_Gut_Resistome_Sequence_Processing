@@ -34,6 +34,10 @@ directory = args.folder
 pipeline = args.label
 fastqSum = args.reads
 
+if not os.path.isdir(directory):
+    print(f"ShortBRED directory not found: {directory}. Skipping...")
+    import sys; sys.exit(0)
+
 # %%
 
 fastq = pd.read_csv(fastqSum, sep="\t")

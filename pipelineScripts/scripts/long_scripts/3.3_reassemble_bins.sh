@@ -1,17 +1,17 @@
 #!/bin/bash
 
-#SBATCH --partition=Orion
-#SBATCH --nodes=1 
-#SBATCH --ntasks-per-node=48
-#SBATCH --mem=1200GB 
-#SBATCH --time=48:00:00 
+##SBATCH --partition=Orion
+##SBATCH --nodes=1
+##SBATCH --ntasks-per-node=48
+##SBATCH --mem=1200GB
+##SBATCH --time=48:00:00
 ##SBATCH --mail-user=${email}
 ##SBATCH --mail-type=END,FAIL
-#SBATCH --job-name=test
+##SBATCH --job-name=test
 ##SBATCH --output=${moduleDir}/${ID}/testing.log
 
 # H1 "Job Context"
-    OMP_NUM_THREADS=$SLURM_NTASKS
+    OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
     # comment "Job: $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
     # comment "Running on host: `hostname`"
 
@@ -22,7 +22,7 @@
     echo 
     echo "----- Resources Requested -----"
     echo "Nodes:            $SLURM_NNODES"
-    echo "Cores / node:     $SLURM_NTASKS"
+    echo "Cores / node:     $SLURM_CPUS_PER_TASK"
     echo "Total memory:     $Total_Gb Gb"
     echo "Wall-clock time:  $JobTime"
     echo "-------------------------------"
@@ -71,8 +71,10 @@ announcement () { ${SOFT}/print_comment.py "$1" "#"; }
 
 
 	# setting scripts and databases from config file (should be in same folder as main script)
-		config_file=$(which config-metawrap)
+		source $pipelineConfig
 		source $config_file
+		source $bashrc
+		source $bash_profile
 
 
 	# default params
@@ -89,9 +91,9 @@ announcement () { ${SOFT}/print_comment.py "$1" "#"; }
 	# load in params
 		out=${moduleDir}/${ID}
 		nanopore_reads=${clean_readDir}/${ID}_ont.fastq
-		bins=${refinedDir}/${ID}/metawrap_${max_completion}_${min_contam}_bins
+		bins=${refinedbinDir}/${ID}/metawrap_${max_completion}_${min_contam}_bins
 		nanopore=true
-		threads=$SLURM_NTASKS
+		threads=$SLURM_CPUS_PER_TASK
 		mem=$Total_Gb
 
 ########################           MAKING SURE EVERYTHING IS SET UP             ########################

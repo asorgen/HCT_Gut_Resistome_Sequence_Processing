@@ -28,34 +28,35 @@
 # Maximum allowed runtime of job (--time=<time>; -t <time>; SBATCH_TIMELIMIT)
 #-----------------------------------------------
 
-#SBATCH --mail-user=${email}
+##SBATCH --mail-user=${email}
 
-source ${HOME}/.bashrc
-metawrap_config=$(which config-metawrap)
-source $metawrap_config
+source $pipelineConfig
+source $config_file
+source $bashrc
+source $bash_profile
 
 # Set function for output comments
     H1 () { print_header.py "$1" "H1"; }
     H2 () { print_header.py "$1" "H2"; }
-    comment () { print_header.py "$1" "#"; }
+    comment () { print_header.py "$1" "#"; echo; }
     error () { echo $1; exit 1; }
 
 H1 "Usage"
     comment "This script is used to perform taxonomic classifications on reads and assemblies of Illumina metagenome sequences."
 
 H1 "Job Context"
-    OMP_NUM_THREADS=$SLURM_NTASKS
+    OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
     comment "Job: $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
     comment "Running on host: `hostname`"
 
-    Total_Gb=$(( SLURM_MEM_PER_NODE / 1000 ))
+    Total_Gb=$(( SLURM_MEM_PER_NODE / 1024 ))
 
     JobTime=$(squeue -h -j $SLURM_JOBID -o "%l")
 
-    echo 
+    echo
     comment "----- Resources Requested -----"
     comment "Nodes:            $SLURM_NNODES"
-    comment "Cores / node:     $SLURM_NTASKS"
+    comment "Cores / node:     $SLURM_CPUS_PER_TASK"
     comment "Total memory:     $Total_Gb Gb"
     comment "Wall-clock time:  $JobTime"
     comment "-------------------------------"
@@ -108,7 +109,7 @@ H1 "Kraken2"
         if [ ! -s $sr_out ] || [ ! -s $sr_rep ]; then
             H2 "Processing short reads"
             output=$sr_out; report=$sr_rep
-            CMD="kraken2 --use-names --db ${KRAKEN2_DB} --paired --threads $SLURM_NTASKS --output $output --report $report $R1 $R2"
+            CMD="kraken2 --use-names --db ${KRAKEN2_DB} --paired --threads $SLURM_CPUS_PER_TASK --output $output --report $report $R1 $R2"
             echo $CMD
             $CMD
         fi
@@ -126,7 +127,7 @@ H1 "Kraken2"
     if [ ! -s $ont_out ] || [ ! -s $ont_rep ]; then
         H2 "Processing ONT reads"
         output=$ont_out; report=$ont_rep; input=$ONT
-        CMD="kraken2 --use-names --db ${KRAKEN2_DB} --threads $SLURM_NTASKS --output $output --report $report $input"
+        CMD="kraken2 --use-names --db ${KRAKEN2_DB} --threads $SLURM_CPUS_PER_TASK --output $output --report $report $input"
         echo $CMD
         $CMD
     fi
@@ -136,7 +137,7 @@ H1 "Kraken2"
     if [ ! -s $asm_out ] || [ ! -s $asm_rep ]; then
         H2 "Processing assembly"
         output=$asm_out; report=$asm_rep; input=$ASM
-        CMD="kraken2 --use-names --db ${KRAKEN2_DB} --threads $SLURM_NTASKS --output $output --report $report $input"
+        CMD="kraken2 --use-names --db ${KRAKEN2_DB} --threads $SLURM_CPUS_PER_TASK --output $output --report $report $input"
         echo $CMD
         $CMD
     fi

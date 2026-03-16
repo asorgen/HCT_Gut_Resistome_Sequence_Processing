@@ -31,16 +31,16 @@
 
 ##SBATCH --mail-user=${email}
 
-source ${HOME}/.bashrc
-config_file=$(which config-metawrap)
+source $pipelineConfig
 source $config_file
-
+source $bashrc
+source $bash_profile
 
 # Set function for output comments
     H1 () { print_header.py "$1" "H1"; }
     H2 () { print_header.py "$1" "H2"; }
     H3 () { print_header.py "$1" "H3"; }
-    comment () { print_header.py "$1" "#"; }
+    comment () { print_header.py "$1" "#"; echo; }
     error () { echo $1; exit 1; }
 
 H1 "Usage"
@@ -66,7 +66,7 @@ H1 "Job Context"
 H1 "Variables"
     echo -e "SampleID (ID): ${ID}"
     H2 "Input"
-    echo -e "${evaluationDir}/${ID}_filtered_assembly.fasta"
+    echo -e "${evaluationDir}/${ID}_final_assembly.fasta"
     H2 "Output"
     echo -e "Binning output will be deposited to ${moduleDir}/${ID} under metabat2_bins/, maxbin2_bins/, and concoct_bins/."
 
@@ -81,7 +81,7 @@ conda init
 conda activate metawrap-env
 
 # default params
-threads=$SLURM_NTASKS; mem=$Total_Gb; len=1000; out=${moduleDir}/${ID}; ASSEMBLY=${evaluationDir}/${ID}_final_assembly.fasta
+threads=$SLURM_CPUS_PER_TASK; mem=$Total_Gb; len=1000; out=${moduleDir}/${ID}; ASSEMBLY=${evaluationDir}/${ID}_final_assembly.fasta
 markers=107
 
 if [ $len -lt 1500 ]; then

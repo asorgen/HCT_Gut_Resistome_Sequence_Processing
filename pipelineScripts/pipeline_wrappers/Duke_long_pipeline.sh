@@ -4,43 +4,37 @@
     #-------------------------------------------------------------------------------------------------------------------
     # This script is used to begin the HCT ARG Assembly pipeline for the Oxford Nanopore (long) read samples.
 
-    # It is important to note that it has been designed for a specific working directory. Therefore, the reproduction of the results will require small modifications of the script or the adaptation of your working directory.
+    # It is important to note that it has been designed for a specific working directory. Therefore, the reproduction
+    # of the results will require small modifications of the script or the adaptation of your working directory.
 
-    # Created on Nov 6, 2024
+    # Created on Nov 6, 2024; Updated March 2026
 
     # @author: Alicia Sorgen - UNC Charlotte Dept of Bioinformatics and Genomics
 
-    # Version: 3
+    # Version: 4
 
     # Required tools:
         # 1. metaWRAP metagenomic wrapper suite (https://github.com/bxlab/metaWRAP)
         # 2. Porechop ONT adapter trimmer (https://github.com/rrwick/Porechop)
-        # 3. Flye de novo PacBio/ONT genome assembler (https://github.com/mikolmogorov/Flye)
-        # 4. BBMap bioinformatic tools (https://github.com/BioInfoTools/BBMap)
-        # 5. AMRFinder+ resistance gene identifier (https://github.com/ncbi/amr)
-        # 6. RGI resistance gene identifier (https://github.com/arpcard/rgi)
+        # 3. NanoFilt read quality/length filter (https://github.com/wdecoster/nanofilt)
+        # 4. minimap2 sequence aligner (https://github.com/lh3/minimap2)
+        # 5. samtools sequence manipulation (https://github.com/samtools/samtools)
+        # 6. Flye de novo PacBio/ONT genome assembler (https://github.com/mikolmogorov/Flye)
+        # 7. AMRFinder+ resistance gene identifier (https://github.com/ncbi/amr)
+        # 8. RGI resistance gene identifier (https://github.com/arpcard/rgi)
+        # 9. Prodigal ORF prediction (https://github.com/hyattpd/Prodigal)
+        # 10. GTDBtk genome taxonomy (https://github.com/Ecogenomics/GTDBTk)
+        # 11. Bakta functional annotation (https://github.com/oschwengers/bakta)
+        # 12. Kraken2 + Bracken taxonomic classification
 
-
-    # This pipeline requires metaWRAP or a metawrap environtment for modules 00, 03-08. 
-
-    # Ensure that the metaWRAP config file include paths to the necessary databases needed for this pipeline.
-    # Instructions found here: https://github.com/bxlab/metaWRAP/blob/master/installation/database_installation.md
-
-    # Database      Size     Used in module
-    # -----------------------------------------
-    # CheckM        1.4Gb    binning, bin_refinement, reassemble_bins
-    # Kraken2       125Gb    kraken2
-    # NCBI_nt       71Gb     classify_bins
-    # NCBI_tax      283Mb    classify_bins
-    # Indexed hg38  20Gb     read_qc
-
-    # Module 00 also requires Porechop.
-
-    # Module 01 requires Flye.
-
-    # Module 02 requires bbmap
-
-    # Module 09 requires the tools AMRFinder+ (https://github.com/ncbi/amr) and RGI (https://github.com/arpcard/rgi) with the required databases.
+    # ONT-specific module notes:
+        # 0.2 Deduplication: Not used (ligation library prep does not introduce PCR duplicates)
+        # 0.3 Sequence trim: Porechop (adapter removal) + NanoFilt (quality/length filter)
+        # 0.4 Host decontam: minimap2 -ax map-ont to GRCh38 (replaces Bowtie2)
+        # 1.1 Assembly: metaFlye (replaces metaSPAdes)
+        # 3.1 Binning: minimap2 -x map-ont alignment (replaces BWA-MEM)
+        # 3.3 Reassembly: Flye (replaces SPAdes)
+        # 5.4 RGI BWT: single-end ONT FASTQ (no --read_two)
 
     # The sampleList is a text file of the sample names in the following format:
     # #SampleID
@@ -51,609 +45,356 @@
 
     #-------------------------------------------------------------------------------------------------------------------
 
-cohort=Duke
-read=long
-dataset=${cohort}_${read}
+# Set pipeline
+    cohort=Duke
+    read=long
+    dataset=${cohort}_${read}
 
-source ${HOME}/.bashrc
-export pipelineConfig=${dataset}-read.config
-source pipelineScripts/configs/${pipelineConfig}
+# Source configs and functions
+    source pipelineScripts/configs/${dataset}-read.config
+    source pipelineScripts/configs/functions.sh
+    export bashrc
+    export pipelineConfig=${ROOT}/pipelineScripts/configs/${dataset}-read.config
+    export config_file=$(which config-metawrap)
+    export module_functions
+    export print_functions
 
-if [[ ! -d $datasetDir ]]; then mkdir -p $datasetDir; fi
-cd $datasetDir
-mkdir -p LOGs
+# Set up
+    if [[ ! -d $datasetDir ]]; then mkdir -p $datasetDir; fi
+    cd $datasetDir
 
-export seqPath
-export readType
-
-# Set function for output comments
-    H1 () { print_header.py "$1" "H1"; }
-    H2 () { print_header.py "$1" "H2"; }
-    H3 () { print_header.py "$1" "H3"; }
-    comment () { print_header.py "$1" "#"; }
-    error () { echo $1; exit 1; }
-    job_lookup() { squeue -u ${USER} --format='%.18i   %.9P   %.40j   %.1T   %.12M   %.10l   %.6D   %R' | awk -v id="$jobID" 'match($3,id) {print $1}'; }
-    module_setup() {
-        script=$1
-        
-        moduleDir="${script%.sh}"
-
-        if [ ! -z "$2" ]; then
-            moduleDir=$moduleDir/$2
-
-        fi
-
-        if [[ ! -d ${moduleDir} ]]; then mkdir -p $moduleDir; fi
-        
-        logDir=${moduleDir}/logs
-        if [[ ! -d ${logDir} ]]; then mkdir -p $logDir; fi
-
-        Complete_tag=${moduleDir}/${ID}/COMPLETE
-
-        jobID="${script%%_*}"
-        jobID=${jobID}_${ID}_${dataset}    
-    }
-    first_ID() {
-        if [[ $module == 0 ]]; then 
-            H2 "${ID}"
-            ((module++))
-        fi    
-    }
-    run_module() {
-        
-        # If the completion file exists
-        if [[ -a "$Complete_tag" ]]; then
-            
-            Current_Job=COMPLETE
-
-        else
-
-            queued=$(job_lookup $jobID)
-            # If the job is not queued
-            if [ -z "$queued" ]; then
-
-                # If the dependent job is complete
-                if [[ "$DEPENDENT_JOB" = "COMPLETE" ]]; then
-
-                    first_ID
-                    H3 "$header3"
-                    Current_Job=$(sbatch \
-                        $hpc_opts \
-                        --job-name=${jobID} -o ${logDir}/${ID}.%A.log ./scripts/modules/${script})
-                    echo $Current_Job
-                    echo "[ Log file ] -> ${dataset}/${logDir}/${ID}.${Current_Job##* }.log"
-                    ((count++))
-
-                else
-                    H3 "$header3"
-                    Current_Job=$(sbatch --dependency=afterok:${DEPENDENT_JOB##* } \
-                        $hpc_opts \
-                        --job-name=${jobID} -o ${logDir}/${ID}.%A.log ./scripts/modules/${script})
-                    echo $Current_Job
-                    echo "[ Log file ] -> ${dataset}/${logDir}/${ID}.${Current_Job##* }.log"
-                    ((count++))
-
-               fi # if [[ "$DEPENDENT_JOB" = "COMPLETE" ]]
-
-            else
-                Current_Job=$queued
-           fi # if [ -z "$queued" ]
-
-        fi     
-    }
-    
-
-
-if [[ ! -s ${dataset}_pipeline_${version}.out ]]; then
-    H1 "Usage"
-        comment "export version=$version"
-        comment "nohup sh ./pipelineScripts/${dataset}_pipeline.sh >> ${dataset}/LOGs/${dataset}_pipeline_${version}.out 2>&1 &"
-        
-    H1 "Variables"
+    if [[ ! -f "LOGs/${dataset}_pipeline_$version.out" ]]; then
+        H3 "Usage"
+        echo "export version=$version"
+        echo "nohup sh ./pipelineScripts/${dataset}_pipeline.sh >> ${dataset}/LOGs/${dataset}_pipeline_$version.out 2>&1 &"
+        echo
         comment "[ Raw sequence directory ]: ${seqPath}"
-        
-fi
-
-
-# Initialize count variable
-count=0
-
-export totalSamples=`tail -n +2 $sampleList | wc -l`
-
-for ID in $(tail -n +2 $sampleList); do
-
-    module=0
-    export ID
-
-    ##- Copy raw nanopore file
-        
-        module_setup 0.0_raw_reads.sh
-        
-        # Module specific -------------------
-        header3="Copy raw nanopore file"
-        DEPENDENT_JOB=COMPLETE
-        hpc_opts=$copy_opts
-        pipeline_tag=copy_ont
-        # -----------------------------------
-        
-        # Module specific actions -----------
-        Complete_tag=${moduleDir}/${ID}.fastq.gz
-        Complete_tag=0.1_read_qc/${ID}/COMPLETE
-        # -----------------------------------
-        
-        run_module 
-        RAW_READS_JOB=$Current_Job       
-        if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
-        
-
-
-    ##- Read QC
-
-        module_setup 0.1_read_qc.sh
-
-        # Module inputs -------------
-        header3="Read QC"
-        DEPENDENT_JOB=COMPLETE
-        hpc_opts=$read_qc_opts
-        pipeline_tag=read_qc
-        # ---------------------------
-
-
-        # Module specific -----------
-        export raw_readDir=0.0_raw_reads
-        if [[ ! -d ${raw_readDir} ]]; then mkdir -p $raw_readDir; fi
-        export clean_readDir=0.2_clean_reads
-        if [[ ! -d ${clean_readDir} ]]; then mkdir -p $clean_readDir; fi
-        mkdir -p ${moduleDir}/pre-QC_reports
-        mkdir -p ${moduleDir}/post-QC_reports
-        # ---------------------------
-        
-        run_module
-        READ_QC_JOB=$Current_Job        
-        if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
-
-
-    ##- Assembly
-        
-        module_setup 1.1_assembly.sh
-        
-        # Module specific -------------------
-        header3="Assembly"
-        DEPENDENT_JOB=$READ_QC_JOB
-        hpc_opts=$asm_opts
-        pipeline_tag=assembly
-        # -----------------------------------
-        
-        # Module specific actions -----------
-        # -----------------------------------
-        
-        
-        run_module 
-        ASSEMBLY_JOB=$Current_Job       
-        if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
-
-
-
-    ##- Evaluation
-        
-        module_setup 1.2_evaluation.sh
-        
-        # Module specific -------------------
-        header3="Evaluation"
-        DEPENDENT_JOB=$ASSEMBLY_JOB
-        hpc_opts=$eval_opts
-        pipeline_tag=evaluation
-        # -----------------------------------
-        
-        # Module specific actions -----------
-        Complete_tag=${moduleDir}/${ID}_final_assembly.fasta
-        # -----------------------------------
-        
-        run_module 
-        EVALUATION_JOB=$Current_Job       
-        if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
-
-
-
-    ##- Kraken2
-        
-        module_setup 2.1_kraken2.sh
-        
-        # Module specific -------------------
-        header3="Kraken2"
-        DEPENDENT_JOB=$EVALUATION_JOB
-        hpc_opts=$k2_opts
-        pipeline_tag=kraken2
-        # -----------------------------------
-        
-        # Module specific actions -----------
-        if [[ ! -d 2.2_bracken ]]; then mkdir -p 2.2_bracken; fi
-        # -----------------------------------
-        
-        run_module 
-        KRAKEN_JOB=$Current_Job       
-        if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
-
-    # ##- Binning
-        
-    #     script=binning.sh
-    #     moduleDir="${script%.sh}"
-    #     export binningDir=$moduleDir
-
-    #     DEPENDENT_JOB=$EVALUATION_JOB
-
-    #     binning_OUT=${moduleDir}/${ID}/COMPLETE
-
-    #     if [[ -a "$binning_OUT" ]]; then
-    #         BINNING_JOB=COMPLETE
-    #     else
-    #         jobID=$(printf "%02d" $module)
-    #         jobID=${jobID}_${ID}_${readType}
-
-    #         export moduleDir
-    #         logDir=${moduleDir}/logs
-    #         mkdir -p $logDir
-
-    #         queued=$(job_lookup $jobID)
-    #         if [ -z "$queued" ]; then
-
-    #             if [[ "$DEPENDENT_JOB" = "COMPLETE" ]]; then
-    #                 count=$((count + 1))
-    #                 H2 "${ID}"
-    #                 H3 "Binning"
-    #                 BINNING_JOB=$(sbatch \
-    #                     $bin_opts \
-    #                     --job-name=${jobID} -o ${logDir}/${ID}.%A.log ./scripts/modules/${script})
-    #                 echo $BINNING_JOB
-    #                 echo "[ Log file ] -> LONG/${logDir}/${ID}.${BINNING_JOB##* }.log"
-    #             else
-    #                 H3 "Binning"
-    #                 BINNING_JOB=$(sbatch --dependency=afterok:${DEPENDENT_JOB##* } \
-    #                     $bin_opts \
-    #                     --job-name=${jobID} -o ${logDir}/${ID}.%A.log ./scripts/modules/${script})
-    #                 echo $BINNING_JOB
-    #                 echo "[ Log file ] -> LONG/${logDir}/${ID}.${BINNING_JOB##* }.log"
-    #             fi
-    #         else
-    #             BINNING_JOB=$queued
-    #         fi
-    #     fi
-    #     ((module++))
-
-    #     if [[ "$1" = "binning" ]]; then continue; fi
-
-    # ##- Bin Refinement
-
-    #     script=refine_bins.sh
-    #     moduleDir="${script%.sh}"
-    #     export refinedDir=$moduleDir
-
-    #     export max_completion
-    #     export min_contam
-
-        
-    #     refine_OUT=${moduleDir}/${ID}/COMPLETE
-
-    #     if [[ -a "$refine_OUT" ]]; then
-    #         REFINE_JOB=COMPLETE
-    #     else
-    #         jobID=$(printf "%02d" $module)
-    #         jobID=${jobID}_${ID}_${readType}
-
-    #         export moduleDir
-    #         logDir=${moduleDir}/logs
-    #         mkdir -p $logDir
-
-    #         queued=$(job_lookup $jobID)
-    #         if [ -z "$queued" ]; then
-    #             if [[ "$BINNING_JOB" = "COMPLETE" ]]; then
-    #                 count=$((count + 1))
-    #                 H2 "${ID}"
-    #                 H3 "Bin Refinement"
-    #                 REFINE_JOB=$(sbatch \
-    #                     $refine_opts \
-    #                     --job-name=${jobID} -o ${logDir}/${ID}.%A.log ./scripts/modules/${script})
-    #                echo $REFINE_JOB
-    #                echo "[ Log file ] -> LONG/${logDir}/${ID}.${REFINE_JOB##* }.log"
-    #             else
-    #                 H3 "Bin Refinement"
-    #                 REFINE_JOB=$(sbatch --dependency=afterok:${BINNING_JOB##* } \
-    #                     $refine_opts \
-    #                     --job-name=${jobID} -o ${logDir}/${ID}.%A.log ./scripts/modules/${script})
-    #                echo $REFINE_JOB
-    #                echo "[ Log file ] -> LONG/${logDir}/${ID}.${REFINE_JOB##* }.log"
-    #            fi
-    #         else
-    #             REFINE_JOB=$queued
-    #         fi
-    #     fi
-    #     ((module++))
-
-    #     if [[ "$1" = "refine" ]]; then continue; fi
-
-    # ##- Bin Reassembly
-
-    #     script=reassemble_bins.sh
-    #     moduleDir="${script%.sh}"
-    #     export reassemDir=$moduleDir
-
-    #     DEPENDENT_JOB=$REFINE_JOB
-    #     reassembly_OUT=${moduleDir}/${ID}/COMPLETE
-
-    #     if [[ -a "$reassembly_OUT" ]]; then
-    #         REASSEMBLY_JOB=COMPLETE
-    #     else
-    #         jobID=$(printf "%02d" $module)
-    #         jobID=${jobID}_${ID}_${readType}
-
-    #         export moduleDir
-    #         logDir=${moduleDir}/logs
-    #         mkdir -p $logDir
-
-    #         queued=$(job_lookup $jobID)
-    #         if [ -z "$queued" ]; then
-    #             if [[ "$DEPENDENT_JOB" = "COMPLETE" ]]; then
-    #                 count=$((count + 1))
-    #                 H2 "${ID}"
-    #                 H3 "Bin Reassembly"
-    #                 REASSEMBLY_JOB=$(sbatch \
-    #                     $reassem_opts \
-    #                     --job-name=${jobID} -o ${logDir}/${ID}.%A.log ./scripts/modules/${script})
-    #                echo $REASSEMBLY_JOB
-    #                echo "[ Log file ] -> LONG/${logDir}/${ID}.${REASSEMBLY_JOB##* }.log"
-    #             else
-    #                 H3 "Bin Reassembly"
-    #                 REASSEMBLY_JOB=$(sbatch --dependency=afterok:${DEPENDENT_JOB##* } \
-    #                     $reassem_opts \
-    #                     --job-name=${jobID} -o ${logDir}/${ID}.%A.log ./scripts/modules/${script})
-    #                echo $REASSEMBLY_JOB
-    #                echo "[ Log file ] -> LONG/${logDir}/${ID}.${REASSEMBLY_JOB##* }.log"
-    #            fi
-    #         else
-    #             REASSEMBLY_JOB=$queued
-    #         fi
-    #     fi
-    #     ((module++))
-
-    #     if [[ "$1" = "reassembly" ]]; then continue; fi
-
-    # ##- Bin Classification
-
-    #     script=classify_bins.sh
-    #     moduleDir="${script%.sh}"
-
-    #     DEPENDENT_JOB=$REASSEMBLY_JOB
-
-    #     classify_OUT=${moduleDir}/${ID}/COMPLETE
-
-    #     if [[ -a "$classify_OUT" ]]; then
-    #         CLASSIFY_JOB=COMPLETE
-    #     else
-    #         jobID=$(printf "%02d" $module)
-    #         jobID=${jobID}_${ID}_${readType}
-
-    #         export moduleDir
-    #         logDir=${moduleDir}/logs
-    #         mkdir -p $logDir
-
-    #         queued=$(job_lookup $jobID)
-    #         if [ -z "$queued" ]; then
-    #             if [[ "$DEPENDENT_JOB" = "COMPLETE" ]]; then
-    #                 count=$((count + 1))
-    #                 H2 "${ID}"
-    #                 H3 "Bin Classification"
-    #                 CLASSIFY_JOB=$(sbatch \
-    #                     $classify_opts \
-    #                     --job-name=${jobID} -o ${logDir}/${ID}.%A.log ./scripts/modules/${script})
-    #                echo $CLASSIFY_JOB
-    #                echo "[ Log file ] -> ${logDir}/${ID}.${CLASSIFY_JOB##* }.log"
-    #             else
-    #                 H3 "Bin Classification"
-    #                 CLASSIFY_JOB=$(sbatch --dependency=afterok:${DEPENDENT_JOB##* } \
-    #                     $classify_opts \
-    #                     --job-name=${jobID} -o ${logDir}/${ID}.%A.log ./scripts/modules/${script})
-    #                echo $CLASSIFY_JOB
-    #                echo "[ Log file ] -> ${logDir}/${ID}.${CLASSIFY_JOB##* }.log"
-    #            fi
-    #         else
-    #             CLASSIFY_JOB=$queued
-    #         fi
-    #     fi
-    #     ((module++))
-
-    #     if [[ "$1" = "classify" ]]; then continue; fi
-
-    # ##- Functional Annotation
-
-    #     script=annotate_bins.sh
-    #     moduleDir="${script%.sh}"
-
-    #     DEPENDENT_JOB=$REASSEMBLY_JOB
-    #     annotate_OUT=${moduleDir}/${ID}/COMPLETE
-
-    #     if [[ -f "$annotate_OUT" ]]; then
-    #         ANNOTATE_JOB=COMPLETE
-    #     else
-    #         jobID=$(printf "%02d" $module)
-    #         jobID=${jobID}_${ID}_${readType}
-
-    #         export moduleDir
-    #         logDir=${moduleDir}/logs
-    #         mkdir -p $logDir
-
-    #         queued=$(job_lookup $jobID)
-    #         if [ -z "$queued" ]; then
-    #             if [[ "$DEPENDENT_JOB" = "COMPLETE" ]]; then
-    #                 count=$((count + 1))
-    #                 H2 "${ID}"
-    #                 H3 "Functional Annotation"
-    #                 ANNOTATE_JOB=$(sbatch \
-    #                     $annotate_opts \
-    #                     --job-name=${jobID} -o ${logDir}/${ID}.%A.log ./scripts/modules/${script})
-    #                echo $ANNOTATE_JOB
-    #                echo "[ Log file ] -> LONG/${logDir}/${ID}.${ANNOTATE_JOB##* }.log"
-    #             else
-    #                 H3 "Functional Annotation"
-    #                 ANNOTATE_JOB=$(sbatch --dependency=afterok:${DEPENDENT_JOB##* } \
-    #                     $annotate_opts \
-    #                     --job-name=${jobID} -o ${logDir}/${ID}.%A.log ./scripts/modules/${script})
-    #                echo $ANNOTATE_JOB
-    #                echo "[ Log file ] -> LONG/${logDir}/${ID}.${ANNOTATE_JOB##* }.log"
-    #            fi
-    #         else
-    #             ANNOTATE_JOB=$queued
-    #         fi
-    #     fi
-    #     ((module++))
-
-    #     if [[ "$1" = "annotation" ]]; then continue; fi
-
-    # ##- AMR Identification
-
-    #     script=amr_detection.sh
-    #     moduleDir="${script%.sh}"
-
-    #     mkdir -p ${moduleDir}/AMR
-    #     mkdir -p ${moduleDir}/RGI
-    #     amr_OUT=${moduleDir}/RGI/${ID}.rgi.txt
-
-    #     if [[ -s "$amr_OUT" ]]; then
-    #         AMR_JOB=COMPLETE
-    #     else
-    #         jobID=$(printf "%02d" $module)
-    #         jobID=${jobID}_${ID}_${readType}
-
-    #         export moduleDir
-    #         logDir=${moduleDir}/logs
-    #         mkdir -p $logDir
-
-    #         queued=$(job_lookup $jobID)
-    #         if [ -z "$queued" ]; then
-    #             if [[ "$EVALUATION_JOB" = "COMPLETE" ]]; then
-    #                 count=$((count + 1))
-    #                 H2 "${ID}"
-    #                 H3 "AMR Detection"
-    #                 AMR_JOB=$(sbatch \
-    #                     $amr_opts \
-    #                     --job-name=${jobID} -o ${logDir}/${ID}.%A.log ./scripts/modules/${script})
-    #                echo $AMR_JOB
-    #                echo "[ Log file ] -> ${logDir}/${ID}.${AMR_JOB##* }.log"
-    #             else
-    #                 H3 "AMR Detection"
-    #                 AMR_JOB=$(sbatch --dependency=afterok:${EVALUATION_JOB##* } \
-    #                     $amr_opts \
-    #                     --job-name=${jobID} -o ${logDir}/${ID}.%A.log ./scripts/modules/${script})
-    #                 echo $AMR_JOB
-    #                 echo "[ Log file ] -> ${logDir}/${ID}.${AMR_JOB##* }.log"
-    #            fi
-    #         else
-    #             AMR_JOB=$queued
-    #         fi
-    #     fi
-    #     ((module++))
-
-    #     if [[ "$1" = "amr_search" ]]; then continue; fi
-    
-    # ##- Assembly Gene Profiling
-    
-    #     inputType=asm
-    #     script=gene_profiling.sh
-    #     moduleDir="${inputType}_${script%.sh}"
-    #     DEPENDENT_JOB=$EVALUATION_JOB
-
-    #     mkdir -p ${moduleDir}/
-    #     asm_OUT=${moduleDir}/$ID/${ID}_gene_annotations.tsv
-
-    #     if [[ -s "$asm_OUT" ]]; then
-    #         ASM_PROFILE_JOB=COMPLETE
-    #     else
-            
-    #         jobID=$(printf "%02d" $module)
-    #         jobID=${jobID}_${ID}_${readType}
-
-    #         export inputType
-    #         export moduleDir
-    #         logDir=${moduleDir}/logs
-    #         mkdir -p $logDir
-
-    #         queued=$(job_lookup $jobID)
-    #         if [ -z "$queued" ]; then
-    #             if [[ "$DEPENDENT_JOB" = "COMPLETE" ]]; then
-    #                 if [[ "$AMR_JOB" = "COMPLETE" ]]; then count=$((count + 1)); H2 "${ID}"; fi
-                    
-    #                 H3 "Assembly Gene Profiling"
-    #                 ASM_PROFILE_JOB=$(sbatch \
-    #                     $asm_profile_opts \
-    #                     --job-name=${jobID} -o ${logDir}/${ID}.%A.log ./scripts/modules/${script})
-    #                echo $ASM_PROFILE_JOB
-    #                echo "[ Log file ] -> LONG/${logDir}/${ID}.${ASM_PROFILE_JOB##* }.log"
-    #             else
-    #                 H3 "Assembly Gene Profiling"
-    #                 ASM_PROFILE_JOB=$(sbatch --dependency=afterok:${EVALUATION_JOB##* } \
-    #                     $asm_profile_opts \
-    #                     --job-name=${jobID} -o ${logDir}/${ID}.%A.log ./scripts/modules/${script})
-    #                echo $ASM_PROFILE_JOB
-    #                echo "[ Log file ] -> LONG/${logDir}/${ID}.${ASM_PROFILE_JOB##* }.log"
-    #            fi
-    #         else
-    #             ASM_PROFILE_JOB=$queued
-    #         fi
-    #     fi
-    #     ((module++))
-
-    #     if [[ "$1" = "asm_profile" ]]; then continue; fi
-    
-    # ##- Bin Gene Profiling
-    
-    #     inputType=bin
-    #     script=gene_profiling.sh
-    #     moduleDir="${inputType}_${script%.sh}"
-
-    #     DEPENDENT_JOB=$EVALUATION_JOB
-
-    #     mkdir -p ${moduleDir}/
-    #     bin_OUT=${moduleDir}/$ID/${ID}_gene_annotations.tsv
-
-    #     if [[ -s "$bin_OUT" ]]; then
-    #         BIN_PROFILE_JOB=COMPLETE
-    #     else
-            
-    #         jobID=$(printf "%02d" $module)
-    #         jobID=${jobID}_${ID}_${readType}
-
-    #         export inputType
-    #         export moduleDir
-    #         logDir=${moduleDir}/logs
-    #         mkdir -p $logDir
-
-    #         queued=$(job_lookup $jobID)
-    #         if [ -z "$queued" ]; then
-    #             if [[ "$DEPENDENT_JOB" = "COMPLETE" ]]; then
-    #                 if [[ "$ASM_PROFILE_JOB" = "COMPLETE" ]]; then count=$((count + 1)); H2 "${ID}"; fi
-    #                 H3 "Bin Gene Profiling"
-    #                 BIN_PROFILE_JOB=$(sbatch \
-    #                     $asm_profile_opts \
-    #                     --job-name=${jobID} -o ${logDir}/${ID}.%A.log ./scripts/modules/${script})
-    #                echo $BIN_PROFILE_JOB
-    #                echo "[ Log file ] -> LONG/${logDir}/${ID}.${BIN_PROFILE_JOB##* }.log"
-    #             else
-    #                 H3 "Bin Gene Profiling"
-    #                 BIN_PROFILE_JOB=$(sbatch --dependency=afterok:${EVALUATION_JOB##* } \
-    #                     $asm_profile_opts \
-    #                     --job-name=${jobID} -o ${logDir}/${ID}.%A.log ./scripts/modules/${script})
-    #                echo $BIN_PROFILE_JOB
-    #                echo "[ Log file ] -> LONG/${logDir}/${ID}.${BIN_PROFILE_JOB##* }.log"
-    #            fi
-    #         else
-    #             BIN_PROFILE_JOB=$queued
-    #         fi
-    #     fi
-    #     ((module++))
-
-    #     if [[ "$1" = "bin_profile" ]]; then continue; fi
-
-    # # if [[ $count -ge 1 ]]; then exit 0; fi
-
-done
-
-
+    fi
+
+    mkdir -p LOGs
+    export seqPath
+    export readType
+    export totalSamples=`tail -n +2 $sampleList | wc -l`
+
+    # Initialize count variable
+    count=0
+
+# Run pipeline
+    for ID in $(tail -n +2 $sampleList); do
+
+        export ID
+        CLEAN_UP_DEP=()
+
+        module=0
+        if [[ $count -ge 2 ]]; then continue; fi
+
+        ##- 0.0 Copy raw Nanopore file
+            module_setup 0.0_raw_reads.sh
+
+            # Module inputs -------------
+            header3="Copy raw Nanopore file"
+            DEPENDENT_JOB=(COMPLETE)
+            hpc_opts="--partition=Orion --nodes=1 --cpus-per-task=4 --mem=8GB --time=24:00:00 --mail-user=${email} --mail-type=FAIL"
+            export raw_readDir
+            # Skip copy if pre-QC is already done
+            Complete_tag=(${pre_qcDir}/COMPLETE/${ID})
+            # -----------------------------------
+
+            run_module
+            RAW_READS_JOB=$Current_Job
+
+
+        ##- 0.1 Pre-QC (FastQC on raw reads)
+            if $run_pre_qc; then
+                module_setup 0.1_pre_qc.sh
+
+                # Module inputs -------------
+                header3="Pre-QC"
+                DEPENDENT_JOB=(${RAW_READS_JOB##* })
+                hpc_opts=$pre_qc_opts
+                export raw_readDir
+                export pre_qcDir
+                # ---------------------------
+
+                run_module
+                PRE_QC_JOB=$Current_Job
+                CLEAN_UP_DEP+=(${Current_Job##* })
+            else
+                PRE_QC_JOB=COMPLETE
+            fi
+
+
+        # NOTE: 0.2 Deduplication is not run for ONT (ligation library prep has no PCR duplicates).
+
+
+        ##- 0.3 Sequence trim (Porechop adapter trimming + NanoFilt quality/length filtering)
+            if $run_trim; then
+                module_setup 0.3_sequence_trim.sh
+
+                # Module inputs -------------
+                header3="Sequence trim (Porechop + NanoFilt)"
+                DEPENDENT_JOB=(${PRE_QC_JOB##* })
+                hpc_opts=$trim_opts
+                export raw_readDir
+                export trimmed_Dir
+                # ---------------------------
+
+                run_module
+                TRIM_JOB=$Current_Job
+            else
+                TRIM_JOB=COMPLETE
+            fi
+
+
+        ##- 0.4 Host decontamination (minimap2 map-ont + samtools)
+            if $run_decontam; then
+                module_setup 0.4_host_decontamination.sh
+
+                # Module inputs -------------
+                header3="Host decontamination (minimap2 map-ont)"
+                DEPENDENT_JOB=(${TRIM_JOB##* })
+                hpc_opts=$decontam_opts
+                export trimmed_Dir
+                export clean_readDir
+                export GRCh38_FASTA
+                # ---------------------------
+
+                run_module
+                DECONTAM_JOB=$Current_Job
+                CLEAN_UP_DEP+=(${Current_Job##* })
+            else
+                DECONTAM_JOB=COMPLETE
+            fi
+
+
+        ##- 1.1 Assembly (metaFlye)
+            if $run_asm; then
+                module_setup 1.1_assembly.sh
+
+                # Module inputs -------------
+                header3="Assembly (metaFlye)"
+                DEPENDENT_JOB=(${DECONTAM_JOB##* })
+                hpc_opts=$asm_opts
+                export clean_readDir
+                # ---------------------------
+
+                run_module
+                ASSEMBLY_JOB=$Current_Job
+            else
+                ASSEMBLY_JOB=COMPLETE
+            fi
+
+
+        ##- 1.2 Evaluation (filter contigs <${min_contig_len}bp)
+            if $run_eval; then
+                module_setup 1.2_evaluation.sh
+
+                # Module inputs -------------
+                header3="Evaluation (filter short contigs)"
+                DEPENDENT_JOB=(${ASSEMBLY_JOB##* })
+                hpc_opts=$eval_opts
+                export assemblyDir
+                export evaluationDir
+                export min_contig_len
+                # ---------------------------
+
+                run_module
+                EVALUATION_JOB=$Current_Job
+                CLEAN_UP_DEP+=(${Current_Job##* })
+            else
+                EVALUATION_JOB=COMPLETE
+            fi
+
+
+        ##- 2.1 Kraken2 (ONT reads + assembly)
+            if $run_k2; then
+                module_setup 2.1_kraken2.sh
+
+                # Module inputs -------------
+                header3="Kraken2 (ONT reads + assembly)"
+                DEPENDENT_JOB=(${EVALUATION_JOB##* })
+                hpc_opts=$k2_opts
+                export clean_readDir
+                export evaluationDir
+                if [[ ! -d 2.2_bracken ]]; then mkdir -p 2.2_bracken; fi
+                # ---------------------------
+
+                run_module
+                KRAKEN_JOB=$Current_Job
+                CLEAN_UP_DEP+=(${Current_Job##* })
+            else
+                KRAKEN_JOB=COMPLETE
+            fi
+
+
+        ##- 3.1 Binning (MetaBat2 + MaxBin2 + CONCOCT, minimap2 -x map-ont alignment)
+            if $run_bin; then
+                module_setup 3.1_binning.sh
+
+                # Module inputs -------------
+                header3="Binning (MetaBat2 + MaxBin2 + CONCOCT)"
+                DEPENDENT_JOB=(${EVALUATION_JOB##* })
+                hpc_opts=$bin_opts
+                export clean_readDir
+                export evaluationDir
+                export binningDir
+                # ---------------------------
+
+                run_module
+                BINNING_JOB=$Current_Job
+            else
+                BINNING_JOB=COMPLETE
+            fi
+
+
+        ##- 3.2 Refine bins (metaWRAP bin_refinement + CheckM)
+            if $run_refine; then
+                module_setup 3.2_refine_bins.sh
+
+                # Module inputs -------------
+                header3="Bin Refinement (metaWRAP + CheckM)"
+                DEPENDENT_JOB=(${BINNING_JOB##* })
+                hpc_opts=$refine_opts
+                export binningDir
+                export min_completion
+                export max_contam
+                # ---------------------------
+
+                run_module
+                REFINE_JOB=$Current_Job
+            else
+                REFINE_JOB=COMPLETE
+            fi
+
+
+        ##- 3.3 Reassemble bins (Flye)
+            if $run_reassem; then
+                module_setup 3.3_reassemble_bins.sh
+
+                # Module inputs -------------
+                header3="Bin Reassembly (Flye)"
+                DEPENDENT_JOB=(${REFINE_JOB##* })
+                hpc_opts=$reassem_opts
+                export clean_readDir
+                export refinedbinDir
+                export min_completion
+                export max_contam
+                # ---------------------------
+
+                run_module
+                REASSEMBLY_JOB=$Current_Job
+            else
+                REASSEMBLY_JOB=COMPLETE
+            fi
+
+
+        ##- 4.1 Classify bins (GTDBtk)
+            if $run_classify; then
+                module_setup 4.1_classify_bins.sh
+
+                # Module inputs -------------
+                header3="Classify Bins (GTDBtk)"
+                DEPENDENT_JOB=(${REASSEMBLY_JOB##* })
+                hpc_opts=$classify_opts
+                export reassemDir
+                # ---------------------------
+
+                run_module
+                CLASSIFY_JOB=$Current_Job
+            else
+                CLASSIFY_JOB=COMPLETE
+            fi
+
+
+        ##- 4.2 Annotate bins (Prokka/Bakta)
+            if $run_annotate; then
+                module_setup 4.2_annotate_bins.sh
+
+                # Module inputs -------------
+                header3="Annotate Bins (Prokka/Bakta)"
+                DEPENDENT_JOB=(${REASSEMBLY_JOB##* })
+                hpc_opts=$annotate_opts
+                export reassemDir
+                # ---------------------------
+
+                run_module
+                ANNOTATE_JOB=$Current_Job
+            else
+                ANNOTATE_JOB=COMPLETE
+            fi
+
+
+        ##- 5.1 NT AMR from assembly (AMRFinder+ + RGI)
+            if $run_amr_nt_asm; then
+                module_setup 5.1_NT_amr_assembly.sh
+
+                # Module inputs -------------
+                header3="NT AMR from Assembly (AMRFinder+ + RGI)"
+                DEPENDENT_JOB=(${EVALUATION_JOB##* })
+                hpc_opts=$amr_nt_opts
+                export evaluationDir
+                # ---------------------------
+
+                run_module
+                AMR_NT_ASM_JOB=$Current_Job
+            else
+                AMR_NT_ASM_JOB=COMPLETE
+            fi
+
+
+        ##- 5.4 RGI BWT (read-based AMR, single-end ONT)
+            if $run_rgi_bwt; then
+                module_setup 5.4_rgi_bwt.sh
+
+                # Module inputs -------------
+                header3="RGI BWT (read-based AMR, ONT single-end)"
+                DEPENDENT_JOB=(${DECONTAM_JOB##* })
+                hpc_opts=$rgi_bwt_opts
+                export clean_readDir
+                export rgi_bwt_dir
+                # ---------------------------
+
+                run_module
+                RGI_BWT_JOB=$Current_Job
+                CLEAN_UP_DEP+=(${Current_Job##* })
+            else
+                RGI_BWT_JOB=COMPLETE
+            fi
+
+
+        ##- 5.5 AA AMR from assembly (Prodigal + Bakta + AMRFinder+ + RGI proteins)
+            if $run_amr_aa_asm; then
+                module_setup 5.5_AA_amr_assembly.sh
+
+                # Module inputs -------------
+                header3="AA AMR from Assembly (Prodigal + Bakta + AMRFinder+ + RGI)"
+                DEPENDENT_JOB=(${EVALUATION_JOB##* })
+                hpc_opts=$asm_profile_opts
+                export evaluationDir
+                export reassemDir
+                # ---------------------------
+
+                run_module
+                AMR_AA_ASM_JOB=$Current_Job
+                CLEAN_UP_DEP+=(${Current_Job##* })
+            else
+                AMR_AA_ASM_JOB=COMPLETE
+            fi
+
+
+        ##- COMPLETE (cleanup)
+            if $run_clean_up; then
+                module_setup COMPLETE.sh
+
+                # Module inputs -------------
+                header3="Pipeline cleanup"
+                DEPENDENT_JOB=(${CLEAN_UP_DEP[@]})
+                hpc_opts=$discard_opts
+                # ---------------------------
+
+                run_module
+                COMPLETE_JOB=$Current_Job
+            fi
+
+
+    done

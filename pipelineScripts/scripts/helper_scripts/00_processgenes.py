@@ -122,18 +122,18 @@ amrfinder = pd.read_csv(amrfile, sep='\t')
 # Filter amrfinder to only keep '% Identity to reference sequence' >= 70% & 
 #   '% Coverage to reference sequence' >= 50%
 
-amrfinder = amrfinder[(amrfinder['% Identity to reference sequence'] >= 70) & 
-                      (amrfinder['% Coverage of reference sequence'] >= 50)]
+amrfinder = amrfinder[(amrfinder['% Identity to reference'] >= 70) &
+                      (amrfinder['% Coverage of reference'] >= 50)]
 
 # Keep only the selected columns
-amrfinder = amrfinder[['Protein identifier', 'Gene symbol', 'Subclass',
-                       'Sequence name','Accession of closest sequence']]
+amrfinder = amrfinder[['Protein id', 'Element symbol', 'Subclass',
+                       'Element name','Closest reference accession']]
 
-amrfinder = amrfinder.rename(columns={'Protein identifier': 'gene_id', 
-                                      'Gene symbol': 'gene_name', 
+amrfinder = amrfinder.rename(columns={'Protein id': 'gene_id',
+                                      'Element symbol': 'gene_name',
                                       'Subclass': 'gene_class',
-                                      'Sequence name': 'gene_product',
-                                      'Accession of closest sequence': 'gene_accession'})
+                                      'Element name': 'gene_product',
+                                      'Closest reference accession': 'gene_accession'})
 
 # %% Process Bakta data ----------------------------------------------------------------------------
 skip_rows = get_skiprows(baktafile, "#")

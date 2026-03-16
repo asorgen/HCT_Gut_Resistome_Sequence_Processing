@@ -465,18 +465,24 @@ for pipeline in "${PIPELINES[@]}"; do
 
 	# shortbred
 		module_dir=5.3_shortbred
-		if $shortbred; then 
+		if $shortbred; then
 			SECONDS=0
 		  H2 "shortbred"
 
-		  python3 ${ps_path}/summarize_shortbred.py -f $module_dir -l $pipeline -r ${out}/${pipeline}_post-QC_report.tsv
-		  if [[ $? -ne 0 ]]; then error "Something went wrong. Exiting..."; fi
+		  if [[ ! -d ${module_dir} ]]; then
+		    comment "ShortBRED directory not found (${module_dir}). Skipping..."
+		  else
+		    python3 ${ps_path}/summarize_shortbred.py -f $module_dir -l $pipeline -r ${out}/${pipeline}_post-QC_report.tsv
+		    if [[ $? -ne 0 ]]; then error "Something went wrong. Exiting..."; fi
 
-			mv ${module_dir}/${pipeline}_shortbred.tsv ${out}/
+		    if [[ -f ${module_dir}/${pipeline}_shortbred.tsv ]]; then
+		      mv ${module_dir}/${pipeline}_shortbred.tsv ${out}/
+		    fi
 
-			comment "COMPLETE :)"
-			duration=$SECONDS
-			comment "$(elapsed_time "$duration")"
+		    comment "COMPLETE :)"
+		    duration=$SECONDS
+		    comment "$(elapsed_time "$duration")"
+		  fi
 			# if ! $all; then exit 0; fi
 		fi
 

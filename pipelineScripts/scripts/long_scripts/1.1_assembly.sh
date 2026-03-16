@@ -30,33 +30,34 @@
 
 ##SBATCH --mail-user=${email}
 
-source ${HOME}/.bashrc
-config_file=$(which config-metawrap)
+source $pipelineConfig
 source $config_file
+source $bashrc
+source $bash_profile
 
 # Set function for output comments
     H1 () { print_header.py "$1" "H1"; }
     H2 () { print_header.py "$1" "H2"; }
     H3 () { print_header.py "$1" "H3"; }
-    comment () { print_header.py "$1" "#"; }
+    comment () { print_header.py "$1" "#"; echo; }
     error () { echo $1; exit 1; }
 
 H1 "Usage"
     comment "This script is used to assemble Oxford Nanopore long read metagenome samples."
 
 H1 "Job Context"
-    OMP_NUM_THREADS=$SLURM_NTASKS
+    OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
     comment "Job: $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
     comment "Running on host: `hostname`"
 
-    Total_Gb=$(( SLURM_MEM_PER_NODE / 1000 ))
+    Total_Gb=$(( SLURM_MEM_PER_NODE / 1024 ))
 
     JobTime=$(squeue -h -j $SLURM_JOBID -o "%l")
 
-    echo 
+    echo
     comment "----- Resources Requested -----"
     comment "Nodes:            $SLURM_NNODES"
-    comment "Cores / node:     $SLURM_NTASKS"
+    comment "Cores / node:     $SLURM_CPUS_PER_TASK"
     comment "Total memory:     $Total_Gb Gb"
     comment "Wall-clock time:  $JobTime"
     comment "-------------------------------"
@@ -83,9 +84,9 @@ func="metaFlye Assembly"
     if [[ ! -s "${moduleDir}/${ID}/assembly.fasta" ]]; then
         module load flye
         if [[ -s "${moduleDir}/${ID}/flye.log" ]]; then
-            flye --nano-raw ${clean_readDir}/${ID}_ont.fastq --out-dir ${moduleDir}/${ID} --meta -t $SLURM_NTASKS --resume
+            flye --nano-hq ${clean_readDir}/${ID}_ont.fastq --out-dir ${moduleDir}/${ID} --meta -t $SLURM_CPUS_PER_TASK --resume
         else
-            flye --nano-raw ${clean_readDir}/${ID}_ont.fastq --out-dir ${moduleDir}/${ID} --meta -t $SLURM_NTASKS
+            flye --nano-hq ${clean_readDir}/${ID}_ont.fastq --out-dir ${moduleDir}/${ID} --meta -t $SLURM_CPUS_PER_TASK
         fi
         
         if [[ $? -ne 0 ]]; then echo "Something went wrong with ${func}. Exiting"; exit 1; fi
