@@ -81,6 +81,9 @@ func="metaFlye Assembly"
     H1 "$func"
     
     
+    # Force Lustre metadata refresh before checking for existing assembly
+    ls "${moduleDir}/${ID}/" > /dev/null 2>&1 || true
+
     if [[ ! -s "${moduleDir}/${ID}/assembly.fasta" ]]; then
         module load flye
         if [[ -s "${moduleDir}/${ID}/flye.log" ]]; then
