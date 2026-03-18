@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Description
-    #-------------------------------------------------------------------------------------------------------------------
     # This script is used to begin the HCT ARG Assembly pipeline for the Oxford Nanopore (long) read samples.
 
     # It is important to note that it has been designed for a specific working directory. Therefore, the reproduction
@@ -28,13 +27,16 @@
         # 12. Kraken2 + Bracken taxonomic classification
 
     # ONT-specific module notes:
-        # 0.2 Deduplication: Not used (ligation library prep does not introduce PCR duplicates)
+        # 0.2 Deduplication: Not included (ligation library prep does not introduce PCR duplicates)
         # 0.3 Sequence trim: Porechop (adapter removal) + NanoFilt (quality/length filter)
         # 0.4 Host decontam: minimap2 -ax map-ont to GRCh38 (replaces Bowtie2)
-        # 1.1 Assembly: metaFlye (replaces metaSPAdes)
-        # 3.1 Binning: minimap2 -x map-ont alignment (replaces BWA-MEM)
+        # 1.1 Assembly: metaFlye --nano-hq (replaces metaSPAdes)
+        # 2.1 Kraken2: single-end ONT reads (no --paired; assembly classification unchanged)
+        # 3.1 Binning: minimap2 -x map-ont alignment for coverage (replaces BWA-MEM)
         # 3.3 Reassembly: Flye (replaces SPAdes)
-        # 5.4 RGI BWT: single-end ONT FASTQ (no --read_two)
+        # 5.2 NT AMR (bins): Not included in long-read pipeline
+        # 5.4 RGI BWT: single-end ONT FASTQ (no --read_two), KMA aligner
+        # 5.6 AA AMR (bins): Not included in long-read pipeline
 
     # The sampleList is a text file of the sample names in the following format:
     # #SampleID
@@ -43,9 +45,8 @@
 
     # This pipeline was originally run on Red Hat Enterprise Linux 9.2 (Plow) using the Slurm Workload Manager.
 
-    #-------------------------------------------------------------------------------------------------------------------
 
-# Set pipeline
+# Set pipeline 
     cohort=Duke
     read=long
     dataset=${cohort}_${read}
@@ -59,6 +60,7 @@
     export module_functions
     export print_functions
 
+
 # Set up
     if [[ ! -d $datasetDir ]]; then mkdir -p $datasetDir; fi
     cd $datasetDir
@@ -67,10 +69,10 @@
         H3 "Usage"
         echo "export version=$version"
         echo "nohup sh ./pipelineScripts/${dataset}_pipeline.sh >> ${dataset}/LOGs/${dataset}_pipeline_$version.out 2>&1 &"
-        echo
+        echo 
         comment "[ Raw sequence directory ]: ${seqPath}"
     fi
-
+        
     mkdir -p LOGs
     export seqPath
     export readType
@@ -80,52 +82,53 @@
     count=0
 
 # Run pipeline
-    for ID in $(tail -n +2 $sampleList); do
-
-        export ID
+    for s in $(tail -n +2 $sampleList); do
+        export s
+        export ID="${s%%_*}"
         CLEAN_UP_DEP=()
-
+        
         module=0
-        if [[ $count -ge 2 ]]; then continue; fi
+        if [[ $count -ge 1 ]]; then continue; fi
 
         ##- 0.0 Copy raw Nanopore file
-            module_setup 0.0_raw_reads.sh
+            if $run_cp_raw; then
+                module_setup 0.0_raw_reads.sh
 
-            # Module inputs -------------
-            header3="Copy raw Nanopore file"
-            DEPENDENT_JOB=(COMPLETE)
-            hpc_opts="--partition=Orion --nodes=1 --cpus-per-task=4 --mem=8GB --time=24:00:00 --mail-user=${email} --mail-type=FAIL"
-            export raw_readDir
-            # Skip copy if pre-QC is already done
-            Complete_tag=(${pre_qcDir}/COMPLETE/${ID})
-            # -----------------------------------
+                # Module inputs -------------
+                header3="Copy raw Nanopore files"
+                DEPENDENT_JOB=(COMPLETE)
+                hpc_opts="--partition=Orion --nodes=1 --cpus-per-task=4 --mem=8GB --time=24:00:00 --mail-user=${email} --mail-type=FAIL"
+                pipeline_tag=cp_raw
+                if [[ ! -d ${raw_readDir} ]]; then mkdir -p $raw_readDir; fi
+                export raw_readDir
+                # Skip copy if pre-QC is already done
+                Complete_tag=(${raw_readDir}/${ID}.fastq.gz)
+                # -----------------------------------
 
-            run_module
-            RAW_READS_JOB=$Current_Job
+                run_module
+                RAW_READS_JOB=$Current_Job
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
 
-
-        ##- 0.1 Pre-QC (FastQC on raw reads)
+        ##- 0.1 Pre-QC
             if $run_pre_qc; then
                 module_setup 0.1_pre_qc.sh
 
                 # Module inputs -------------
                 header3="Pre-QC"
-                DEPENDENT_JOB=(${RAW_READS_JOB##* })
+                DEPENDENT_JOB=($RAW_READS_JOB)
                 hpc_opts=$pre_qc_opts
+                pipeline_tag=pre_qc
                 export raw_readDir
                 export pre_qcDir
                 # ---------------------------
-
+                
                 run_module
-                PRE_QC_JOB=$Current_Job
+                PRE_QC_JOB=$Current_Job        
                 CLEAN_UP_DEP+=(${Current_Job##* })
-            else
-                PRE_QC_JOB=COMPLETE
+                # echo ${CLEAN_UP_DEP[@]}
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
-
-
-        # NOTE: 0.2 Deduplication is not run for ONT (ligation library prep has no PCR duplicates).
-
 
         ##- 0.3 Sequence trim (Porechop adapter trimming + NanoFilt quality/length filtering)
             if $run_trim; then
@@ -135,18 +138,18 @@
                 header3="Sequence trim (Porechop + NanoFilt)"
                 DEPENDENT_JOB=(${PRE_QC_JOB##* })
                 hpc_opts=$trim_opts
+                pipeline_tag=trim
                 export raw_readDir
                 export trimmed_Dir
                 # ---------------------------
-
+                
                 run_module
-                TRIM_JOB=$Current_Job
-            else
-                TRIM_JOB=COMPLETE
+                TRIM_JOB=$Current_Job        
+                CLEAN_UP_DEP+=(${Current_Job##* })
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
-
-        ##- 0.4 Host decontamination (minimap2 map-ont + samtools)
+        ##- 0.4  Host decontamination (minimap2 map-ont + samtools)
             if $run_decontam; then
                 module_setup 0.4_host_decontamination.sh
 
@@ -154,16 +157,16 @@
                 header3="Host decontamination (minimap2 map-ont)"
                 DEPENDENT_JOB=(${TRIM_JOB##* })
                 hpc_opts=$decontam_opts
+                pipeline_tag=decontam
                 export trimmed_Dir
                 export clean_readDir
                 export GRCh38_FASTA
                 # ---------------------------
-
+                
                 run_module
-                DECONTAM_JOB=$Current_Job
+                DECONTAM_JOB=$Current_Job    
                 CLEAN_UP_DEP+=(${Current_Job##* })
-            else
-                DECONTAM_JOB=COMPLETE
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
 
@@ -175,226 +178,17 @@
                 header3="Assembly (metaFlye)"
                 DEPENDENT_JOB=(${DECONTAM_JOB##* })
                 hpc_opts=$asm_opts
-                export clean_readDir
+                pipeline_tag=assembly
+                # export assemblyDir
                 # ---------------------------
-
+                
                 run_module
-                ASSEMBLY_JOB=$Current_Job
-            else
-                ASSEMBLY_JOB=COMPLETE
-            fi
-
-
-        ##- 1.2 Evaluation (filter contigs <${min_contig_len}bp)
-            if $run_eval; then
-                module_setup 1.2_evaluation.sh
-
-                # Module inputs -------------
-                header3="Evaluation (filter short contigs)"
-                DEPENDENT_JOB=(${ASSEMBLY_JOB##* })
-                hpc_opts=$eval_opts
-                export assemblyDir
-                export evaluationDir
-                export min_contig_len
-                # ---------------------------
-
-                run_module
-                EVALUATION_JOB=$Current_Job
+                ASSEMBLY_JOB=$Current_Job    
                 CLEAN_UP_DEP+=(${Current_Job##* })
-            else
-                EVALUATION_JOB=COMPLETE
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
-
-
-        ##- 2.1 Kraken2 (ONT reads + assembly)
-            if $run_k2; then
-                module_setup 2.1_kraken2.sh
-
-                # Module inputs -------------
-                header3="Kraken2 (ONT reads + assembly)"
-                DEPENDENT_JOB=(${EVALUATION_JOB##* })
-                hpc_opts=$k2_opts
-                export clean_readDir
-                export evaluationDir
-                if [[ ! -d 2.2_bracken ]]; then mkdir -p 2.2_bracken; fi
-                # ---------------------------
-
-                run_module
-                KRAKEN_JOB=$Current_Job
-                CLEAN_UP_DEP+=(${Current_Job##* })
-            else
-                KRAKEN_JOB=COMPLETE
-            fi
-
-
-        ##- 3.1 Binning (MetaBat2 + MaxBin2 + CONCOCT, minimap2 -x map-ont alignment)
-            if $run_bin; then
-                module_setup 3.1_binning.sh
-
-                # Module inputs -------------
-                header3="Binning (MetaBat2 + MaxBin2 + CONCOCT)"
-                DEPENDENT_JOB=(${EVALUATION_JOB##* })
-                hpc_opts=$bin_opts
-                export clean_readDir
-                export evaluationDir
-                export binningDir
-                # ---------------------------
-
-                run_module
-                BINNING_JOB=$Current_Job
-            else
-                BINNING_JOB=COMPLETE
-            fi
-
-
-        ##- 3.2 Refine bins (metaWRAP bin_refinement + CheckM)
-            if $run_refine; then
-                module_setup 3.2_refine_bins.sh
-
-                # Module inputs -------------
-                header3="Bin Refinement (metaWRAP + CheckM)"
-                DEPENDENT_JOB=(${BINNING_JOB##* })
-                hpc_opts=$refine_opts
-                export binningDir
-                export min_completion
-                export max_contam
-                # ---------------------------
-
-                run_module
-                REFINE_JOB=$Current_Job
-            else
-                REFINE_JOB=COMPLETE
-            fi
-
-
-        ##- 3.3 Reassemble bins (Flye)
-            if $run_reassem; then
-                module_setup 3.3_reassemble_bins.sh
-
-                # Module inputs -------------
-                header3="Bin Reassembly (Flye)"
-                DEPENDENT_JOB=(${REFINE_JOB##* })
-                hpc_opts=$reassem_opts
-                export clean_readDir
-                export refinedbinDir
-                export min_completion
-                export max_contam
-                # ---------------------------
-
-                run_module
-                REASSEMBLY_JOB=$Current_Job
-            else
-                REASSEMBLY_JOB=COMPLETE
-            fi
-
-
-        ##- 4.1 Classify bins (GTDBtk)
-            if $run_classify; then
-                module_setup 4.1_classify_bins.sh
-
-                # Module inputs -------------
-                header3="Classify Bins (GTDBtk)"
-                DEPENDENT_JOB=(${REASSEMBLY_JOB##* })
-                hpc_opts=$classify_opts
-                export reassemDir
-                # ---------------------------
-
-                run_module
-                CLASSIFY_JOB=$Current_Job
-            else
-                CLASSIFY_JOB=COMPLETE
-            fi
-
-
-        ##- 4.2 Annotate bins (Prokka/Bakta)
-            if $run_annotate; then
-                module_setup 4.2_annotate_bins.sh
-
-                # Module inputs -------------
-                header3="Annotate Bins (Prokka/Bakta)"
-                DEPENDENT_JOB=(${REASSEMBLY_JOB##* })
-                hpc_opts=$annotate_opts
-                export reassemDir
-                # ---------------------------
-
-                run_module
-                ANNOTATE_JOB=$Current_Job
-            else
-                ANNOTATE_JOB=COMPLETE
-            fi
-
-
-        ##- 5.1 NT AMR from assembly (AMRFinder+ + RGI)
-            if $run_amr_nt_asm; then
-                module_setup 5.1_NT_amr_assembly.sh
-
-                # Module inputs -------------
-                header3="NT AMR from Assembly (AMRFinder+ + RGI)"
-                DEPENDENT_JOB=(${EVALUATION_JOB##* })
-                hpc_opts=$amr_nt_opts
-                export evaluationDir
-                # ---------------------------
-
-                run_module
-                AMR_NT_ASM_JOB=$Current_Job
-            else
-                AMR_NT_ASM_JOB=COMPLETE
-            fi
-
-
-        ##- 5.4 RGI BWT (read-based AMR, single-end ONT)
-            if $run_rgi_bwt; then
-                module_setup 5.4_rgi_bwt.sh
-
-                # Module inputs -------------
-                header3="RGI BWT (read-based AMR, ONT single-end)"
-                DEPENDENT_JOB=(${DECONTAM_JOB##* })
-                hpc_opts=$rgi_bwt_opts
-                export clean_readDir
-                export rgi_bwt_dir
-                # ---------------------------
-
-                run_module
-                RGI_BWT_JOB=$Current_Job
-                CLEAN_UP_DEP+=(${Current_Job##* })
-            else
-                RGI_BWT_JOB=COMPLETE
-            fi
-
-
-        ##- 5.5 AA AMR from assembly (Prodigal + Bakta + AMRFinder+ + RGI proteins)
-            if $run_amr_aa_asm; then
-                module_setup 5.5_AA_amr_assembly.sh
-
-                # Module inputs -------------
-                header3="AA AMR from Assembly (Prodigal + Bakta + AMRFinder+ + RGI)"
-                DEPENDENT_JOB=(${EVALUATION_JOB##* })
-                hpc_opts=$asm_profile_opts
-                export evaluationDir
-                export reassemDir
-                # ---------------------------
-
-                run_module
-                AMR_AA_ASM_JOB=$Current_Job
-                CLEAN_UP_DEP+=(${Current_Job##* })
-            else
-                AMR_AA_ASM_JOB=COMPLETE
-            fi
-
-
-        ##- COMPLETE (cleanup)
-            if $run_clean_up; then
-                module_setup COMPLETE.sh
-
-                # Module inputs -------------
-                header3="Pipeline cleanup"
-                DEPENDENT_JOB=(${CLEAN_UP_DEP[@]})
-                hpc_opts=$discard_opts
-                # ---------------------------
-
-                run_module
-                COMPLETE_JOB=$Current_Job
-            fi
-
 
     done
+    H1 "Pipeline Complete!"
+
+
