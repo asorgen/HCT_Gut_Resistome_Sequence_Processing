@@ -75,8 +75,16 @@
         H2 "Input"
             echo -e "${raw_readDir}/${ID}.fastq.gz"
         H2 "Output"
+            out=$moduleDir
             if [[ ! -d ${trimmed_Dir} ]]; then mkdir -p ${trimmed_Dir}; fi
             echo -e "${trimmed_Dir}/${ID}_trimmed.fastq.gz"
+
+            H3 "FastQC"
+            qc_out=${out}/QC_report
+            if [[ ! -d ${qc_out} ]]; then mkdir -p ${qc_out}; fi
+            echo ${qc_out}/${ID}_trimmed_fastqc.html
+            echo ${qc_out}/${ID}_trimmed_fastqc.zip
+
             if [[ ! -d ${moduleDir}/COMPLETE ]]; then mkdir -p ${moduleDir}/COMPLETE; fi
 
     H2 "[ Start ]"
@@ -155,6 +163,31 @@ STEP="NanoFilt quality and length filtering"
 
     conda deactivate
     module unload anaconda3/2023.09
+
+STEP="Post-trim QC Report (FastQC)"
+    H1 "$STEP"
+
+    outputFile=${qc_out}/${ID}_trimmed_fastqc.zip
+    if [[ -s "$outputFile" ]]; then
+        comment "Output file already found. Skipping this command..."
+    else
+        start=$SECONDS
+        #------------
+        conda activate metawrap-env
+        export _JAVA_OPTIONS="-Xmx32g"
+        fastqc -q -t $SLURM_CPUS_PER_TASK \
+            -o ${qc_out} \
+            -f fastq ${trimmed_Dir}/${ID}_trimmed.fastq.gz
+
+        if [[ $? -ne 0 ]]; then error "FastQC failed for ${ID}. Exiting..."; fi
+
+        #------------
+        end=$SECONDS; duration=$(( end-start ))
+    fi
+    step_completion "${outputFile}"
+
+    conda deactivate
+
 
 # Completion
     module_completion
