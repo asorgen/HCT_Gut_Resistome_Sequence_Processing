@@ -44,6 +44,41 @@
         fi    
     }
 
+# Run a pipeline module step with all standard boilerplate in one call.
+# Usage: run_module_step <script> <header> <dep_job_id> <hpc_opts> <tag> <result_var>
+#   script      — module script filename (e.g., "0.3_sequence_trim.sh")
+#   header      — display name printed by H3 (e.g., "Sequence trim")
+#   dep_job_id  — job ID of the preceding step, or "COMPLETE" if no dependency
+#                 (always pass the stripped ID using ${PREV_JOB##* })
+#   hpc_opts    — slurm resource string (e.g., $trim_opts from config)
+#   tag         — short pipeline tag for single-step reruns (e.g., "trim")
+#   result_var  — name of the variable to store Current_Job in (e.g., "TRIM_JOB")
+#
+# Returns 1 if $pipeline_stop_tag matches this step's tag (signals caller to `continue`).
+# Returns 0 otherwise.
+    run_module_step() {
+        local script="$1"
+        local header="$2"
+        local dep_id="$3"
+        local opts="$4"
+        local tag="$5"
+        local result_var="$6"
+
+        module_setup "$script"
+        header3="$header"
+        DEPENDENT_JOB=("$dep_id")
+        hpc_opts="$opts"
+        pipeline_tag="$tag"
+
+        run_module
+
+        printf -v "$result_var" '%s' "$Current_Job"
+        CLEAN_UP_DEP+=("${Current_Job##* }")
+
+        [[ "$pipeline_stop_tag" == "$tag" ]] && return 1
+        return 0
+    }
+
 # Run the module script
     run_module() {
         
