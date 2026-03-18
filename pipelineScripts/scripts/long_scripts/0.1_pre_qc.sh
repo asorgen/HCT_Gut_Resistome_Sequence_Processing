@@ -94,9 +94,8 @@ STEP="Pre-QC Report (FastQC)"
     else
         start=$SECONDS
         #------------
-
+        export _JAVA_OPTIONS="-Xmx32g"
         fastqc -q -t $SLURM_CPUS_PER_TASK \
-            --java-mem-size 4096m \
             -o ${moduleDir} \
             -f fastq ${raw_readDir}/${ID}.fastq.gz
 
