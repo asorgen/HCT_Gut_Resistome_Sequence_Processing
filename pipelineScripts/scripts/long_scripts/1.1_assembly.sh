@@ -86,7 +86,7 @@ func="metaFlye Assembly"
 
     if [[ ! -s "${moduleDir}/${ID}/assembly.fasta" ]]; then
         module load flye
-        if [[ -s "${moduleDir}/${ID}/flye.log" ]]; then
+        if [[ -f "${moduleDir}/${ID}/params.json" ]]; then
             flye --nano-hq ${clean_readDir}/${ID}_ont.fastq --out-dir ${moduleDir}/${ID} --meta -t $SLURM_CPUS_PER_TASK --resume
         else
             flye --nano-hq ${clean_readDir}/${ID}_ont.fastq --out-dir ${moduleDir}/${ID} --meta -t $SLURM_CPUS_PER_TASK
@@ -108,7 +108,7 @@ func="metaFlye Assembly"
 
 # Completion status
     if [[ -s ${moduleDir}/${ID}/assembly.fasta ]]; then
-        touch ${moduleDir}/${ID}/COMPLETE
+        touch ${moduleDir}/COMPLETE/${ID}
     fi
 
 
