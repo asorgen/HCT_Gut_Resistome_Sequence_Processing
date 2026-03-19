@@ -74,6 +74,17 @@
     fi
         
     mkdir -p LOGs
+
+    # Capture stop-tag argument so it remains accessible inside run_module_step
+    pipeline_stop_tag="$1"
+
+    # Export all module directories so sbatch jobs inherit them
+    # (replaces per-module `export varName` lines in each block)
+    export raw_readDir pre_qcDir trimmed_Dir clean_readDir
+    export assemblyDir evaluationDir krakenDir brackenDir
+    export binningDir refinedbinDir reassemDir rgi_bwt_dir
+    export GRCh38_FASTA
+
     export seqPath
     export readType
     export totalSamples=`tail -n +2 $sampleList | wc -l`
@@ -112,80 +123,27 @@
 
         ##- 0.1 Pre-QC
             if $run_pre_qc; then
-                module_setup 0.1_pre_qc.sh
-
-                # Module inputs -------------
-                header3="Pre-QC"
-                DEPENDENT_JOB=($RAW_READS_JOB)
-                hpc_opts=$pre_qc_opts
-                pipeline_tag=pre_qc
-                export raw_readDir
-                export pre_qcDir
-                # ---------------------------
-                
-                run_module
-                PRE_QC_JOB=$Current_Job        
-                CLEAN_UP_DEP+=(${Current_Job##* })
-                # echo ${CLEAN_UP_DEP[@]}
-                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+                run_module_step "0.1_pre_qc.sh" "Pre-QC" \
+                    "${RAW_READS_JOB##* }" "$pre_qc_opts" "pre_qc" "PRE_QC_JOB" || continue
             fi
 
         ##- 0.3 Sequence trim (Porechop adapter trimming + NanoFilt quality/length filtering)
             if $run_trim; then
-                module_setup 0.3_sequence_trim.sh
-
-                # Module inputs -------------
-                header3="Sequence trim (Porechop + NanoFilt)"
-                DEPENDENT_JOB=(${PRE_QC_JOB##* })
-                hpc_opts=$trim_opts
-                pipeline_tag=trim
-                export raw_readDir
-                export trimmed_Dir
-                # ---------------------------
-                
-                run_module
-                TRIM_JOB=$Current_Job        
-                CLEAN_UP_DEP+=(${Current_Job##* })
-                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+                run_module_step "0.3_sequence_trim.sh" "Sequence trim (Porechop + NanoFilt)" \
+                    "${PRE_QC_JOB##* }" "$trim_opts" "trim" "TRIM_JOB" || continue
             fi
 
         ##- 0.4  Host decontamination (minimap2 map-ont + samtools)
             if $run_decontam; then
-                module_setup 0.4_host_decontamination.sh
-
-                # Module inputs -------------
-                header3="Host decontamination (minimap2 map-ont)"
-                DEPENDENT_JOB=(${TRIM_JOB##* })
-                hpc_opts=$decontam_opts
-                pipeline_tag=decontam
-                export trimmed_Dir
-                export clean_readDir
-                export GRCh38_FASTA
-                # ---------------------------
-                
-                run_module
-                DECONTAM_JOB=$Current_Job    
-                CLEAN_UP_DEP+=(${Current_Job##* })
-                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+                run_module_step "0.4_host_decontamination.sh" "Host decontamination (minimap2 map-ont)" \
+                    "${TRIM_JOB##* }" "$decontam_opts" "decontam" "DECONTAM_JOB" || continue
             fi
 
 
         ##- 1.1 Assembly (metaFlye)
             if $run_asm; then
-                module_setup 1.1_assembly.sh
-
-                # Module inputs -------------
-                header3="Assembly (metaFlye)"
-                DEPENDENT_JOB=(${DECONTAM_JOB##* })
-                hpc_opts=$asm_opts
-                pipeline_tag=assembly
-                # export assemblyDir
-                # ---------------------------
-                
-                run_module
-                ASSEMBLY_JOB=$Current_Job    
-                CLEAN_UP_DEP+=(${Current_Job##* })
-                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+                run_module_step "1.1_assembly.sh" "Assembly (metaFlye)" \
+                    "${DECONTAM_JOB##* }" "$asm_opts" "assembly" "ASSEMBLY_JOB" || continue
             fi
 
     done
