@@ -103,22 +103,26 @@
 
         ##- 0.0 Copy raw Nanopore file
             if $run_cp_raw; then
-                module_setup 0.0_raw_reads.sh
-
-                # Module inputs -------------
-                header3="Copy raw Nanopore files"
-                DEPENDENT_JOB=(COMPLETE)
                 hpc_opts="--partition=Orion --nodes=1 --cpus-per-task=4 --mem=8GB --time=24:00:00 --mail-user=${email} --mail-type=FAIL"
-                pipeline_tag=cp_raw
-                if [[ ! -d ${raw_readDir} ]]; then mkdir -p $raw_readDir; fi
-                export raw_readDir
-                # Skip copy if pre-QC is already done
-                Complete_tag=(${raw_readDir}/${ID}.fastq.gz)
-                # -----------------------------------
+                module_step_run "0.0_raw_reads.sh" "Copy raw Nanopore files" \
+                    (COMPLETE) "$hpc_opts" "cp_raw" "RAW_READS_JOB" || continue
 
-                run_module
-                RAW_READS_JOB=$Current_Job
-                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+                # module_setup 0.0_raw_reads.sh
+
+                # # Module inputs -------------
+                # header3="Copy raw Nanopore files"
+                # DEPENDENT_JOB=(COMPLETE)
+                # hpc_opts="--partition=Orion --nodes=1 --cpus-per-task=4 --mem=8GB --time=24:00:00 --mail-user=${email} --mail-type=FAIL"
+                # pipeline_tag=cp_raw
+                # if [[ ! -d ${raw_readDir} ]]; then mkdir -p $raw_readDir; fi
+                # export raw_readDir
+                # # Skip copy if pre-QC is already done
+                # Complete_tag=(${raw_readDir}/${ID}.fastq.gz)
+                # # -----------------------------------
+
+                # run_module
+                # RAW_READS_JOB=$Current_Job
+                # if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
         ##- 0.1 Pre-QC
@@ -144,6 +148,12 @@
             if $run_asm; then
                 run_module_step "1.1_assembly.sh" "Assembly (metaFlye)" \
                     "${DECONTAM_JOB##* }" "$asm_opts" "assembly" "ASSEMBLY_JOB" || continue
+            fi
+
+        ##- 1.2 Evaluation (filter contigs <${min_contig_len}bp)
+            if $run_asm; then
+                run_module_step "1.2_evaluation.sh" "Evaluation (filter short contigs)" \
+                    "${ASSEMBLY_JOB##* }" "$eval_opts" "eval" "EVALUATION_JOB" || continue
             fi
 
     done
