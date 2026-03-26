@@ -139,3 +139,53 @@
            fi # if [ -z "$queued" ]
         fi     
     }
+
+
+# Set function for output comments -----------------------------------------------------------------------------------------
+    test_for_output() {
+        File_list=("$@")  # capture all arguments as an array
+        all_complete=true
+        for file in "${File_list[@]}"; do 
+            if [[ ! -e "$file" ]]; then 
+                all_complete=false
+                break
+            fi
+        done
+        echo "$all_complete"
+    }
+    step_completion() {
+        File_list=("$@")  # capture all arguments as an array
+        
+        all_complete=true
+        for file in "${File_list[@]}"; do 
+            if [[ ! -e "$file" ]]; then 
+                all_complete=false
+                break
+            fi
+        done
+
+        if $all_complete; then 
+            comment "SUCCESS: $STEP Complete"
+        else
+            error "[ $STEP ERROR! ] - Exiting..."
+        fi
+        Complete_tag+=("${File_list[@]}")
+    }
+    substep_completion() {
+        File_list=("$@")  # capture all arguments as an array
+        
+        all_complete=true
+        for file in "${File_list[@]}"; do 
+            if [[ ! -e "$file" ]]; then 
+                all_complete=false
+                break
+            fi
+        done
+
+        if $all_complete; then 
+            comment "SUCCESS: $STEP Complete"
+        else
+            error "[ $STEP ERROR! ] - Exiting..."
+        fi
+        Intermediate_files+=("${File_list[@]}")
+    }
