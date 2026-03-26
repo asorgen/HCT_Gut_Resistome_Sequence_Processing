@@ -102,12 +102,12 @@ echo -e "    9. Splits contigs into bins (split_concoct_bins.py)."
         JobTime=$(squeue -h -j $SLURM_JOBID -o "%l")
 
         echo 
-        comment "----- Resources Requested -----"
-        comment "Nodes:            $SLURM_NNODES"
-        comment "Cores / node:     $SLURM_CPUS_PER_TASK"
-        comment "Total memory:     $Total_Gb Gb"
-        comment "Wall-clock time:  $JobTime"
-        comment "-------------------------------"
+        print "----- Resources Requested -----"
+        print "Nodes:            $SLURM_NNODES"
+        print "Cores / node:     $SLURM_CPUS_PER_TASK"
+        print "Total memory:     $Total_Gb Gb"
+        print "Wall-clock time:  $JobTime"
+        print "-------------------------------"
 
     H1 "Variables"
         comment "SampleID (ID): ${ID}"
