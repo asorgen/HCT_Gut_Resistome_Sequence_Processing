@@ -96,6 +96,7 @@
     for s in $(tail -n +2 $sampleList); do
         export s
         export ID="${s%%_*}"
+        H2 "$ID"
         CLEAN_UP_DEP=()
         
         module=0
@@ -104,8 +105,8 @@
         ##- 0.0 Copy raw Nanopore file
             if $run_cp_raw; then
                 hpc_opts="--partition=Orion --nodes=1 --cpus-per-task=4 --mem=8GB --time=24:00:00 --mail-user=${email} --mail-type=FAIL"
-                module_step_run "0.0_raw_reads.sh" "Copy raw Nanopore files" \
-                    (COMPLETE) "$hpc_opts" "cp_raw" "RAW_READS_JOB" || continue
+                run_module_step "0.0_raw_reads.sh" "Copy raw Nanopore files" \
+                    "COMPLETE" "$hpc_opts" "cp_raw" "RAW_READS_JOB" || continue
 
                 # module_setup 0.0_raw_reads.sh
 
@@ -154,6 +155,18 @@
             if $run_asm; then
                 run_module_step "1.2_evaluation.sh" "Evaluation (filter short contigs)" \
                     "${ASSEMBLY_JOB##* }" "$eval_opts" "eval" "EVALUATION_JOB" || continue
+            fi
+
+        ##- 2.1 Kraken2 (ONT reads + assembly)
+            if $run_k2; then
+                run_module_step "2.1_kraken2.sh" "Kraken2 (ONT reads + assembly)" \
+                    "${EVALUATION_JOB##* }" "$k2_opts" "kraken" "KRAKEN_JOB" || continue
+            fi
+
+        ##- 3.1 Binning (MetaBat2 + MaxBin2 + CONCOCT, minimap2 -x map-ont alignment)
+            if $run_bin; then
+                run_module_step "3.1_binning.sh" ""Binning (MetaBat2 + MaxBin2 + CONCOCT)" \
+                    "${EVALUATION_JOB##* }" "$bin_opts" "binning" "BINNING_JOB" || continue
             fi
 
     done
