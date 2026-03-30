@@ -105,7 +105,7 @@
         print "-------------------------------"
 
     H1 "Variables"
-        comment -e "SampleID (ID): ${ID}"
+        comment "SampleID (ID): ${ID}"
 
         H2 "Input"
             long_reads=${clean_readDir}/${ID}_ont.fastq; echo -e $long_reads
@@ -139,7 +139,7 @@
 
 
 # Default params & set up ------------------------------------------------------------------------------------------------
-    threads=$SLURM_CPUS_PER_TASK; mem=$Total_Gb; len=1000; out=${moduleDir}/${ID}; s
+    threads=$SLURM_CPUS_PER_TASK; mem=$Total_Gb; len=1000; out=${moduleDir}/${ID};
     markers=107
 
     if [ $len -lt 1500 ]; then
@@ -159,10 +159,6 @@
     output_exists=$(test_for_output "${bamFile}")
     if ! "$output_exists"; then
         H1 "$STEP"
-
-        # module load minimap2
-        # module load samtools
-        # module load bwa
 
         # Index assembly
             STEP="Indexing assembly"
@@ -198,6 +194,7 @@
             outfile=${out}/work_files/${ID}_long_unsort.bam
             output_exists=$(test_for_output "${outfile}")
             if ! "$output_exists"; then
+                H3 $STEP
                 samtools view -bS ${out}/work_files/${ID}_long.sam > ${out}/work_files/${ID}_long_unsort.bam
                 samtools sort -@ $threads -o ${out}/work_files/${ID}_long.bam ${out}/work_files/${ID}_long_unsort.bam
                 
@@ -208,55 +205,36 @@
                 # fi
             fi; substep_completion ${outfile}
 
-        # module unload minimap2
-        # module unload samtools
-        # module unload bwa
-
-    fi; substep_completion $bamFile
-    exit 0
+    fi; STEP="Assembly alignment"; substep_completion $bamFile
+    rm ${out}/work_files/*_unsort.bam
 
 # MetaBat2 ---------------------------------------------------------------------------------------------------
-    func="MetaBat2"
-    H1 "Binning with $func"
-    outputFile=${out}/metabat2_bins
-    if [[ -d "$outputFile" ]]; then
-        comment "Output file already found. Skipping this command..."
-    else
-        start=$SECONDS
-        #------------
+    STEP="MetaBat2"
+    metabatDir=${out}/metabat2_bins
+    output_exists=false; if [ ! -z "$(ls -A $metabatDir)" ]; then output_exists=true; echo "exists"; fi
+
+    if ! "$output_exists"; then
+        H1 "$STEP"
 
         H3 "Making contig depth file"
             jgi_summarize_bam_contig_depths --outputDepth ${out}/work_files/metabat_depth.txt ${out}/work_files/*.bam
-            if [[ $? -ne 0 ]]; then error "Something went wrong while summarizing contig depths. Exiting"; fi
 
-        H3 "Starting $func"
+        H3 "Starting $STEP"
             # mkdir -p ${out}/metabat2_bins
             metabat2 -i $ASSEMBLY -a ${out}/work_files/metabat_depth.txt \
                  -o ${out}/metabat2_bins/bin -m $metabat_len -t $threads --unbinned
-            if [[ $? -ne 0 ]]; then echo "Something went wrong while running $func. Exiting"; rm -r ${out}/metabat2_bins; fi
-
-        #------------
-        end=$SECONDS; duration=$(( end-start ))
-
-        if [[ $? -eq 0 ]]; then
-            H2 "Yipee! $func Complete"
-            comment "$func: $(elapsed_time "$duration")"
-        fi
-    fi
+    fi; STEP="MetaBat2"; step_completion $metabatDir
 
 # MaxBin2 ---------------------------------------------------------------------------------------------------
-    func="MaxBin2"
-    H1 "Binning with $func"
-    outputFile=${out}/maxbin2_bins
-    if [[ -s "$outputFile" ]]; then
-        comment "Output file already found. Skipping this command..."
-    else
-        start=$SECONDS
-        #------------
+    STEP="MaxBin2"
+    maxbin2Dir=${out}/maxbin2_bins
+    output_exists=false; if [ ! -z "$(ls -A $maxbin2Dir)" ]; then output_exists=true; echo "exists"; fi
+    
+    if ! "$output_exists"; then
+        H1 "$STEP"
 
         H3 "Making contig depth file"
             jgi_summarize_bam_contig_depths --outputDepth ${out}/work_files/mb2_master_depth.txt --noIntraDepthVariance ${out}/work_files/*.bam
-            if [[ $? -ne 0 ]]; then error "Something went wrong while summarizing contig depths. Exiting"; fi
 
         H3 "Splitting the master contig depth file into individual files for $func input"
             #calculate total numper of columns
@@ -270,10 +248,8 @@
                 grep -v totalAvgDepth ${out}/work_files/mb2_master_depth.txt | cut -f 1,$i > ${out}/work_files/mb2_${ID}.txt
                 echo ${out}/work_files/mb2_${ID}.txt >> ${out}/work_files/mb2_abund_list.txt
             done
-            if [[ $? -ne 0 ]]; then echo "Something went wrong while running $func. Exiting"; rm -r ${out}/metabat2_bins; fi
 
-
-        H3 "Starting $func"
+        H3 "Starting $STEP"
             mkdir ${out}/work_files/maxbin2_out
             run_MaxBin.pl -contig $ASSEMBLY -markerset $markers -thread $threads -min_contig_length $len \
                 -out ${out}/work_files/maxbin2_out/bin \
@@ -292,16 +268,6 @@
                 done
                 rm -r ${out}/work_files/maxbin2_out
             fi
-            
-
-
-        #------------
-        end=$SECONDS; duration=$(( end-start ))
-
-        if [[ $? -eq 0 ]]; then
-            H2 "Yipee! $func Complete"
-            comment "$func: $(elapsed_time "$duration")"
-        fi
     fi
 
 # CONCOCT ---------------------------------------------------------------------------------------------------
@@ -368,8 +334,8 @@ conda deactivate
     metabat2_OUT=${moduleDir}/${ID}/metabat2_bins
     maxbin2_OUT=${moduleDir}/${ID}/maxbin2_bins
     concoct_OUT=${moduleDir}/${ID}/concoct_bins
-    if [[ -d $metabat2_OUT && -d $maxbin2_OUT && -d $concoct_OUT ]]; thenm
-        touch ${moduleDir}/${ID}/COMPLETE
+    if [[ -d $metabat2_OUT && -d $maxbin2_OUT && -d $concoct_OUT ]]; then
+        touch ${moduleDir}/COMPLETE/${ID}
     fi
 
 
