@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Description --------------------------------------------------------------------------------------------------------------
-    # This script assigns taxonomy to consolidated, reassembled bins for each sample using GTDB-tk.
+    # This script does the following:
+    # 1. Assigns taxonomy to consolidated, reassembled bins for each sample using GTDB-tk.
 
     # It is important to note that it has been designed for a specific working directory.
     # Therefore, the reproduction of the results will require small modifications of the script
@@ -31,18 +32,12 @@
     source $bashrc
     source $bash_profile
     source $module_functions
-
-# Set function for output comments -----------------------------------------------------------------------------------------
-    H1 () { print_header.py "$1" "H1"; }
-    H2 () { print_header.py "$1" "H2"; }
-    H3 () { print_header.py "$1" "H3"; }
-    comment () { print_header.py "$1" "#"; echo; }
-    error () { echo $1; exit 1; }
-    pFunc () { echo $1; echo; }
+    source $print_functions
 
 # Print script information to log ------------------------------------------------------------------------------------------
-    H1 "Usage"
-    comment "This script assigns taxonomy to consolidated, reassembled bins for each sample using GTDB-tk."
+    H1 "Description: 4.1_classify_bins.sh"
+        echo -e "This script does the following:"
+        echo -e "1. Assigns taxonomy to consolidated, reassembled bins for each sample using GTDB-tk."
 
     H1 "Job Context"
         OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
@@ -53,12 +48,12 @@
         JobTime=$(squeue -h -j $SLURM_JOBID -o "%l")
 
         echo
-        comment "----- Resources Requested -----"
-        comment "Nodes:            $SLURM_NNODES"
-        comment "Cores / node:     $SLURM_CPUS_PER_TASK"
-        comment "Total memory:     $Total_Gb Gb"
-        comment "Wall-clock time:  $JobTime"
-        comment "-------------------------------"
+        print "----- Resources Requested -----"
+        print "Nodes:            $SLURM_NNODES"
+        print "Cores / node:     $SLURM_CPUS_PER_TASK"
+        print "Total memory:     $Total_Gb Gb"
+        print "Wall-clock time:  $JobTime"
+        print "-------------------------------"
 
     H1 "Variables"
         comment "SampleID (ID): ${ID}"
