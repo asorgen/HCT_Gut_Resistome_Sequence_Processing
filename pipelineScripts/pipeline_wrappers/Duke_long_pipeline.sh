@@ -106,7 +106,7 @@
             if $run_cp_raw; then
                 hpc_opts="--partition=Orion --nodes=1 --cpus-per-task=4 --mem=8GB --time=24:00:00 --mail-user=${email} --mail-type=FAIL"
                 run_module_step "0.0_raw_reads.sh" "Copy raw Nanopore files" \
-                    "COMPLETE" "$hpc_opts" "cp_raw" "RAW_READS_JOB" || continue
+                    "(COMPLETE)" "$hpc_opts" "cp_raw" "RAW_READS_JOB" || continue
 
                 # module_setup 0.0_raw_reads.sh
 
@@ -165,8 +165,32 @@
 
         ##- 3.1 Binning (MetaBat2 + MaxBin2 + CONCOCT, minimap2 -x map-ont alignment)
             if $run_bin; then
-                run_module_step "3.1_binning.sh" ""Binning (MetaBat2 + MaxBin2 + CONCOCT)" \
+                run_module_step "3.1_binning.sh" "Binning (MetaBat2 + MaxBin2 + CONCOCT)" \
                     "${EVALUATION_JOB##* }" "$bin_opts" "binning" "BINNING_JOB" || continue
+            fi
+
+        ##- 3.2 Refine bins (metaWRAP bin_refinement + CheckM)
+            if $run_refine; then
+                run_module_step "3.2_refine_bins.sh" "Bin Refinement (metaWRAP + CheckM)" \
+                    "${BINNING_JOB##* }" "$refine_opts" "refine" "REFINE_JOB" || continue
+            fi
+
+        ##- 3.3 Reassemble bins (Flye)
+            if $run_reassem; then
+                run_module_step "3.3_reassemble_bins.sh" "Bin Reassembly (Flye)" \
+                    "${REFINE_JOB##* }" "$reassem_opts" "reassem" "REASSEMBLY_JOB" || continue
+            fi
+
+        ##- 4.1 Classify bins (GTDBtk)
+            if $run_classify; then
+                run_module_step "4.1_classify_bins.sh" "Classify Bins (GTDBtk)" \
+                    "${REASSEMBLY_JOB##* }" "$classify_opts" "classify" "CLASSIFY_JOB" || continue
+            fi
+
+        ##- 4.2 Annotate bins (Prokka/Bakta)
+            if $run_annotate; then
+                run_module_step "4.2_annotate_bins.sh" "Annotate Bins (Prokka/Bakta)" \
+                    "${REASSEMBLY_JOB##* }" "$annotate_opts" "annotate" "ANNOTATE_JOB" || continue
             fi
 
     done
