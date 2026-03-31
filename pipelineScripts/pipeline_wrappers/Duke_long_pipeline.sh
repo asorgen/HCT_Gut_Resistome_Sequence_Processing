@@ -193,6 +193,12 @@
                     "${REASSEMBLY_JOB##* }" "$annotate_opts" "annotate" "ANNOTATE_JOB" || continue
             fi
 
+        ##- 5.4 RGI BWT (read-based AMR, single-end ONT)
+            if $run_rgi_bwt; then
+                run_module_step "5.4_rgi_bwt.sh" "RGI BWT (read-based AMR, ONT single-end)" \
+                    "${DECONTAM_JOB##* }" "$rgi_bwt_opts" "rgi_bwt" "RGI_BWT_JOB" || continue
+            fi
+
     done
     H1 "Pipeline Complete!"
 
