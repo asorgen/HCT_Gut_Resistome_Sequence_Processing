@@ -36,7 +36,7 @@
         # 3.3 Reassembly: Flye (replaces SPAdes)
         # 5.2 NT AMR (bins): Not included in long-read pipeline
         # 5.4 RGI BWT: single-end ONT FASTQ (no --read_two), KMA aligner
-        # 5.6 AA AMR (bins): Not included in long-read pipeline
+        # 5.6 AA AMR (bins): Prodigal on reassembled bins → Bakta + AMRFinder + RGI proteins
 
     # The sampleList is a text file of the sample names in the following format:
     # #SampleID
@@ -197,6 +197,18 @@
             if $run_rgi_bwt; then
                 run_module_step "5.4_rgi_bwt.sh" "RGI BWT (read-based AMR, ONT single-end)" \
                     "${DECONTAM_JOB##* }" "$rgi_bwt_opts" "rgi_bwt" "RGI_BWT_JOB" || continue
+            fi
+
+        ##- 5.5 AA AMR from assembly (Prodigal + Bakta + AMRFinder + RGI proteins)
+            if $run_amr_aa_asm; then
+                run_module_step "5.5_AA_amr_assembly.sh" "AA AMR from assembly (Prodigal + Bakta + AMRFinder + RGI)" \
+                    "${EVALUATION_JOB##* }" "$asm_profile_opts" "aa_amr_asm" "AMR_AA_ASM_JOB" || continue
+            fi
+
+        ##- 5.6 AA AMR from bins (Prodigal + Bakta + AMRFinder + RGI proteins)
+            if $run_amr_aa_bin; then
+                run_module_step "5.6_AA_amr_bins.sh" "AA AMR from bins (Prodigal + Bakta + AMRFinder + RGI)" \
+                    "${REASSEMBLY_JOB##* }" "$asm_profile_opts" "aa_bin_amr" "AMR_AA_BIN_JOB" || continue
             fi
 
     done
