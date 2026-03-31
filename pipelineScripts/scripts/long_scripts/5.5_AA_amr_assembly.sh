@@ -40,16 +40,10 @@
     source $bashrc
     source $bash_profile
     source $module_functions
+    source $print_functions
 
-# Set function for output comments -----------------------------------------------------------------------------------------
-    H1 () { print_header.py "$1" "H1"; }
-    H2 () { print_header.py "$1" "H2"; }
-    H3 () { print_header.py "$1" "H3"; }
-    comment () { print_header.py "$1" "#"; echo; }
-    error () { echo $1; exit 1; }
-    pFunc () { echo $1; echo; }
-
-# Print script information to log ------------------------------------------------------------------------------------------
+# Print description script information to log ----------------------------------------------------------------------------------------
+    /bin/date
     H1 "Description: 5.5_AA_amr_assembly.sh"
         echo -e "This script does the following:"
         echo -e "1. ORF prediction with Prodigal"
@@ -59,6 +53,7 @@
         echo -e "5. Gene list extraction"
         echo -e "6. Merges results into unified gene annotations table"
 
+# Print job context and resources to log ----------------------------------------------------------------------------------------
     H1 "Job Context"
         comment "Job: $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
         comment "Running on host: `hostname`"
@@ -67,41 +62,46 @@
         JobTime=$(squeue -h -j $SLURM_JOBID -o "%l")
 
         echo
-        comment "----- Resources Requested -----"
-        comment "Nodes:            $SLURM_NNODES"
-        comment "Cores / node:     $SLURM_CPUS_PER_TASK"
-        comment "Total memory:     $Total_Gb Gb"
-        comment "Wall-clock time:  $JobTime"
-        comment "-------------------------------"
+        print "----- Resources Requested -----"
+        print "Nodes:            $SLURM_NNODES"
+        print "Cores / node:     $SLURM_CPUS_PER_TASK"
+        print "Total memory:     $Total_Gb Gb"
+        print "Wall-clock time:  $JobTime"
+        print "-------------------------------"
 
+# Print variables to log ----------------------------------------------------------------------------------------
     H1 "Variables"
         comment "SampleID (ID): ${ID}"
         inputType=asm
 
-        H2 "Input"
-            inputFile=${evaluationDir}/${ID}_final_assembly.fasta
-            echo -e $inputFile
+    H2 "Input"
+        inputFile=${evaluationDir}/${ID}_final_assembly.fasta
+        echo -e $inputFile
 
-        H2 "Output"
-            if [[ ! -d ${moduleDir}/${ID} ]]; then mkdir -p ${moduleDir}/${ID}; fi
+    H2 "Output"
+        if [[ ! -d ${moduleDir}/${ID} ]]; then mkdir -p ${moduleDir}/${ID}; fi
 
-            prodigal_output=${moduleDir}/${ID}/${ID}_genes.faa; echo -e "${prodigal_output}"
-            bakta_output=${moduleDir}/${ID}/bakta/${ID}.tsv; echo -e "${bakta_output}"
-            amr_output=${moduleDir}/${ID}/${ID}.amrfinder.tsv; echo -e "${amr_output}"
-            rgi_output=${moduleDir}/$ID/${ID}.rgi.txt; echo -e "${rgi_output}"
-            gene_list=${moduleDir}/$ID/${ID}_geneslist.tsv; echo -e "${gene_list}"
-            outputFile=${moduleDir}/$ID/${ID}_gene_annotations.tsv; echo -e "${outputFile}"
+        prodigal_output=${moduleDir}/${ID}/${ID}_genes.faa; echo -e "${prodigal_output}"
+        bakta_output=${moduleDir}/${ID}/bakta/${ID}.tsv; echo -e "${bakta_output}"
+        amr_output=${moduleDir}/${ID}/${ID}.amrfinder.tsv; echo -e "${amr_output}"
+        rgi_output=${moduleDir}/$ID/${ID}.rgi.txt; echo -e "${rgi_output}"
+        gene_list=${moduleDir}/$ID/${ID}_geneslist.tsv; echo -e "${gene_list}"
+        outputFile=${moduleDir}/$ID/${ID}_gene_annotations.tsv; echo -e "${outputFile}"
 
-            if [[ ! -d ${moduleDir}/COMPLETE ]]; then mkdir -p ${moduleDir}/COMPLETE; fi
+        if [[ ! -d ${moduleDir}/COMPLETE ]]; then mkdir -p ${moduleDir}/COMPLETE; fi
 
     H2 "[ Start ]"
-    /bin/date
     SECONDS=0
     Complete_tag=()
     Intermediate_files=()
 
 
-STEP="Prodigal"
+# Prodigal ORF prediction --------------------------------------------------------------------------------------------------------
+    module load anaconda3/2023.09
+    source /apps/pkg/anaconda3/2023.09/etc/profile.d/conda.sh
+    conda activate metawrap-env
+    
+    STEP="Prodigal"
     H1 "$STEP"
 
     if [[ -s "$prodigal_output" ]]; then
@@ -119,7 +119,8 @@ STEP="Prodigal"
     step_completion "${prodigal_output}"
 
 
-STEP="Bakta"
+# Bakta annotation --------------------------------------------------------------------------------------------------------
+    STEP="Bakta"
     H1 "$STEP"
     module load anaconda3/2023.09
     source $conda_init
@@ -153,7 +154,8 @@ STEP="Bakta"
     step_completion "${bakta_output}"
 
 
-STEP="AMRFinderPlus"
+# AMRFinderPlus annotation --------------------------------------------------------------------------------------------------------
+    STEP="AMRFinderPlus"
     H1 "$STEP"
     source $miniforge_init
 
@@ -188,7 +190,8 @@ STEP="AMRFinderPlus"
     step_completion "${amr_output}"
 
 
-STEP="RGI"
+# RGI annotation --------------------------------------------------------------------------------------------------------
+    STEP="RGI"
     H1 "$STEP"
     rgi_output=${moduleDir}/$ID/${ID}.rgi.txt
     if [[ -s "$rgi_output" ]]; then
@@ -226,7 +229,8 @@ STEP="RGI"
     step_completion "${rgi_output}"
 
 
-STEP="Gene list"
+# Gene list extraction --------------------------------------------------------------------------------------------------------
+    STEP="Gene list"
     H1 "$STEP"
     gene_list=${moduleDir}/$ID/${ID}_geneslist.tsv
     if [[ -s "$gene_list" ]]; then
@@ -249,8 +253,9 @@ STEP="Gene list"
     step_completion "${gene_list}"
 
 
-STEP="Annotate genes using AMRFinder, RGI and Bakta results"
-    H1 "$STEP"
+#  Merge annotations --------------------------------------------------------------------------------------------------------
+    STEP="Annotate genes using AMRFinder, RGI and Bakta results"
+    H1 "$STEP" 
 
     if [[ -s "$outputFile" ]]; then
         comment "Output file already found. Skipping this command..."
