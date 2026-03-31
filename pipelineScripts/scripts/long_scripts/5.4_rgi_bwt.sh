@@ -47,8 +47,8 @@
 
     H1 "Job Context"
         OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
-        print "Job: $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
-        print "Running on host: `hostname`"
+        comment "Job: $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
+        comment "Running on host: `hostname`"
 
         Total_Gb=$(( SLURM_MEM_PER_NODE / 1024 ))
         JobTime=$(squeue -h -j $SLURM_JOBID -o "%l")
@@ -62,7 +62,7 @@
         print "-------------------------------"
 
     H1 "Variables"
-        comment "SampleID: ${ID}"
+        comment "SampleID (ID): ${ID}"
 
         H2 "Input"
             datasetROOT=$(pwd)
@@ -76,6 +76,8 @@
 
             if [[ ! -d ${moduleDir}/COMPLETE ]]; then mkdir -p ${moduleDir}/COMPLETE; fi
 
+    H2 "[ Start ]"
+    /bin/date
     SECONDS=0
     Complete_tag=()
     Intermediate_files=()
