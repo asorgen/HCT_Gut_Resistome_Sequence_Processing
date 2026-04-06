@@ -1,3 +1,82 @@
 .DS_Store
 pipelineScripts/configs/private.config
 CLAUDE.md
+# Data files (too large for git)
+*.fastq
+*.fastq.gz
+*.fq
+*.fq.gz
+*.bam
+*.sam
+
+# R artifacts
+.Rhistory
+.RData
+*.Rproj.user/
+*.Rproj
+
+# Python virtual environment
+.venv/
+
+# Mac system files
+.DS_Store
+
+# Log files
+*.log
+*.out
+*.err
+
+# Large outputs
+*.biom
+
+# Duplicate/test files
+0.1_read_qc.sh
+1.1_assembly_no_read_correction.sh
+5.4_rgi_bwt_only.sh
+5.1_amr_detection.sh
+5.1_NT_amr_detection.sh
+5.2_gene_profiling.sh
+5.2_AA_amr_detection.sh
+dup_ids.txt
+1.1_assembly_testing.sh
+
+# Pipeline output folders
+[0-9].[0-9]_*/
+COMPLETE/
+
+databases/
+Duke_hybrid/
+Duke_long/
+
+metaWRAP-modules/
+metawrap-scripts/
+RESULTS*/
+data/
+From_Tessa/
+
+
+Rplots.pdf
+~$*
+parse_samples_transcript.md
+
+# Private configuration (contains personal paths, email, sample IDs)
+sequence_processing/pipelineScripts/configs/private.config
+
+# Heston-specific pipeline wrappers
+sequence_processing/pipelineScripts/pipeline_wrappers/Duke_short_Heston_pipeline.sh
+sequence_processing/pipelineScripts/pipeline_wrappers/UNC_short_Heston_pipeline.sh
+
+# Sample list data files (keep .gitkeep)
+sequence_processing/pipelineScripts/sample_lists/*
+!sequence_processing/pipelineScripts/sample_lists/.gitkeep
+
+# Sequence processing working directories
+Duke_short/
+UNC_short/
+.Rproj.user
+
+*_old.*
+Duke_long_pipeline_refactor_plan.md
+
+# Snakemake pipeline (in development, not ready for repo)
+sequence_processing/snakemake/
