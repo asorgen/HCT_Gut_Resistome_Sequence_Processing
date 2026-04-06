@@ -70,23 +70,26 @@ Removes intermediate files after all modules complete to reclaim storage.
 ## Directory Structure
 
 ```
-sequence_processing/
+HCT_Gut_Resistome_Sequence_Processing/
 ├── README.md
 ├── manuals/                            # Detailed documentation for each module
-├── pipelineScripts/
-│   ├── configs/                        # Pipeline configuration files (.config)
-│   │   └── functions.sh                # Shared helper functions (job submission, logging)
-│   ├── modified-metaWRAP-modules/       # Custom metaWRAP modules (see installation instructions below)
-│   ├── pipeline_wrappers/              # Entry-point scripts that orchestrate the full pipeline
-│   ├── sample_lists/                   # Sample ID manifests (one sample per line)
-│   └── scripts/
-│       ├── short_scripts/              # Short-read pipeline modules (0.x - 6)
-│       ├── long_scripts/               # Long-read pipeline modules
-│       ├── hybrid_scripts/             # Hybrid assembly modules
-│       ├── helper_scripts/             # Utility scripts (parsing, counting, database download)
-│       └── post_scripts/               # Post-processing summarization and aggregation
-└── databases/                          # Reference databases (Kraken2, CARD, CheckM, etc.)
+└── pipelineScripts/
+    ├── configs/                        # Pipeline configuration files (.config)
+    │   ├── functions.sh                # Shared helper functions (job submission, logging)
+    │   ├── function_commands.sh        # Additional shared command helpers
+    │   └── private.config.example     # Template for machine-specific paths (not tracked)
+    ├── modified-metaWRAP-modules/      # Custom metaWRAP modules (see installation instructions below)
+    ├── pipeline_wrappers/              # Entry-point scripts that orchestrate the full pipeline
+    ├── sample_lists/                   # Sample ID manifests (one sample per line)
+    └── scripts/
+        ├── short_scripts/              # Short-read pipeline modules (0.x - 6)
+        ├── long_scripts/               # Long-read pipeline modules
+        ├── hybrid_scripts/             # Hybrid assembly modules
+        ├── helper_scripts/             # Utility scripts (parsing, counting, database download)
+        └── post_scripts/               # Post-processing summarization and aggregation
 ```
+
+> **Note:** Reference databases (Kraken2, CARD, CheckM, etc.) are not tracked in this repository. Database paths are set in the `.config` files.
 
 ---
 
