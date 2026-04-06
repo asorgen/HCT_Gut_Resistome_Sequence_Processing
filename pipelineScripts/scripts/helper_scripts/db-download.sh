@@ -5,10 +5,12 @@
 #SBATCH --ntasks-per-node=8
 #SBATCH --mem=8GB
 #SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=asorgen@uncc.edu
 #SBATCH --job-name db-wget
 #SBATCH --time=10:00:00
 #SBATCH --output=/scratch/%u/dbLOGs/%x.%j.log
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/../../configs/private.config"
 
 # Set function for output comments -----------------------------------------------------------------------------------------
     H1 () { print_header.py "$1" "H1"; }
@@ -48,7 +50,7 @@
 	SECONDS=0
 
 # GTDB-tk database download
-	ROOT=/projects/afodor_research3/${USER}/HCT_Gut_Resistome_Pipeline/sequence_processing
+	ROOT=${HPC_PROJECTS}/HCT_Gut_Resistome_Study/HCT_Gut_Resistome_Pipeline/sequence_processing
 	if [[ ! -d ${ROOT}/databases/GTDBtk/release220 ]]; then
 	    H2 "GTDB-tk database download"
 
