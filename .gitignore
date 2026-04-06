@@ -63,12 +63,12 @@ parse_samples_transcript.md
 sequence_processing/pipelineScripts/configs/private.config
 
 # Heston-specific pipeline wrappers
-sequence_processing/pipelineScripts/pipeline_wrappers/Duke_short_Heston_pipeline.sh
-sequence_processing/pipelineScripts/pipeline_wrappers/UNC_short_Heston_pipeline.sh
+pipelineScripts/pipeline_wrappers/Duke_short_Heston_pipeline.sh
+pipelineScripts/pipeline_wrappers/UNC_short_Heston_pipeline.sh
 
 # Sample list data files (keep .gitkeep)
-sequence_processing/pipelineScripts/sample_lists/*
-!sequence_processing/pipelineScripts/sample_lists/.gitkeep
+pipelineScripts/sample_lists/*
+!pipelineScripts/sample_lists/.gitkeep
 
 # Sequence processing working directories
 Duke_short/
