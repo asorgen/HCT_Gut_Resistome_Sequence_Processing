@@ -48,8 +48,8 @@ Key variables set in the `.config` files (`pipelineScripts/configs/`):
 | `run_rgi_bwt` | Toggle RGI BWT module on/off | `true` |
 | `clean_readDir` | Input directory (cleaned reads) | `${datasetDir}/0.4_host_decontamination` |
 | `rgi_bwt_dir` | Output directory | `${datasetDir}/5.4_rgi_bwt` |
-| `RGI_ENV` | Path to RGI Python virtualenv | `/users/asorgen/PROGRAMS/rgi_env/bin/activate` |
-| `CARD_DB` | Path to CARD database on scratch | `/scratch/asorgen/RGI_databases/rgi_4.0.1` |
+| `RGI_ENV` | Path to RGI Python virtualenv | `${HPC_HOME}/PROGRAMS/rgi_env/bin/activate` |
+| `CARD_DB` | Path to CARD database on scratch | `${HPC_SCRATCH}/RGI_databases/rgi_4.0.1` |
 | `rgi_bwt_opts` | SLURM resource options | See table below |
 
 ### SLURM resources (`rgi_bwt_opts`)
