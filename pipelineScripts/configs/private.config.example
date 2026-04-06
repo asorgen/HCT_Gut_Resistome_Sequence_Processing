@@ -25,6 +25,12 @@ HPC_SCRATCH=/scratch/your_username
 email_short=your_email@institution.edu    # short-read pipeline (Duke + UNC)
 email_long=your_email@institution.edu     # long-read and hybrid pipeline
 
+# Raw sequence paths (cohort-specific) ----------------------------------------
+# Paths to the directories containing raw FASTQ files for each cohort/read type.
+SEQ_PATH_DUKE_SHORT=/path/to/duke/illumina/raw_fastqs
+SEQ_PATH_UNC_SHORT=/path/to/unc/illumina/raw_fastqs
+SEQ_PATH_DUKE_LONG=/path/to/duke/nanopore/raw_fastqs
+
 # Sample IDs to exclude from pipeline processing (space-separated) ------------
 # These IDs will be skipped in all pipeline wrappers and helper scripts.
 # Add any samples that failed QC or should otherwise be excluded.
