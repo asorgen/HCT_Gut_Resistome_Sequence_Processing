@@ -76,7 +76,7 @@ Key variables set in the `.config` files (`pipelineScripts/configs/`):
 |----------|-------------|---------|
 | `run_k2` | Toggle Kraken2 module on/off | `true` |
 | `KRAKEN2_DB` | Path to Kraken2 database | `${ROOT}/databases/KRAKEN2-TESSA-DB` |
-| `bracken` | Path to Bracken `src/` directory | `/users/asorgen/PROGRAMS/Bracken-2.7/src` |
+| `bracken` | Path to Bracken `src/` directory | `${HPC_HOME}/PROGRAMS/Bracken-2.7/src` |
 | `krakenDir` | Kraken2 output directory | `${datasetDir}/2.1_kraken2` |
 | `brackenDir` | Bracken output directory | `${datasetDir}/2.2_bracken` |
 | `k2_opts` | SLURM resource options for this module | See table below |

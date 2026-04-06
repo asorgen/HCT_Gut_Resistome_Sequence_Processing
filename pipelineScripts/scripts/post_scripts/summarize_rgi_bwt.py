@@ -72,9 +72,9 @@ try:
 except SystemExit:
     # Set default values for interactive development
     print("Running in interactive mode - using default values")
-    directory = "/path/to/scratch/kma_output"
+    directory = "/path/to/scratch/<PIPELINE>/5.4_rgi_bwt/kma_output"
     pipeline = "Duke_short"
-    fastqSum = "/path/to/scratch/Duke_short_post-QC_report.tsv"
+    fastqSum = "/path/to/scratch/<PIPELINE>_post-QC_report.tsv"
     min_reads = 5
     min_mapq = 0
     min_cov = 0
