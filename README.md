@@ -4,6 +4,17 @@ A modular metagenomic analysis pipeline supporting short-read, long-read, and hy
 
 ---
 
+## Data and Privacy
+
+**This repository contains no patient data, raw sequencing files, or individually identifiable information.**
+
+- All FASTQ files, BAM/SAM files, and other sequence data are excluded via `.gitignore` and are never tracked.
+- Sample ID lists used during pipeline execution are excluded via `.gitignore` and are never tracked. Only a `.gitkeep` placeholder is committed to preserve the directory structure.
+- Machine-specific configuration (including file paths and email addresses) is stored in `private.config`, which is also gitignored. A template (`private.config.example`) with no real values is provided instead.
+- Reference databases are not included in this repository.
+
+---
+
 ## Pipeline Workflow Overview
 
 The pipeline is organized into numbered modules that execute sequentially through SLURM job dependencies. Each module can be toggled on or off via configuration files.
