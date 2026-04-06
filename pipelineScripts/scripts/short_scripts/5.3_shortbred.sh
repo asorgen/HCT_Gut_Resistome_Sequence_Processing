@@ -108,7 +108,6 @@
         echo -e "${FASTQ}_2.fastq.gz"
         OUTPUT_MARKERS=$SB_MARKERS
         echo -e $OUTPUT_MARKERS
-            # /projects/afodor_research3/asorgen/HCT_Gut_Resistome_Pipeline/sequence_processing/databases/ShortBRED/CARD_ShortBRED_markers.faa
         TEMP_DIR="${moduleDir}/${ID}_tmp"
         out=$moduleDir
 
