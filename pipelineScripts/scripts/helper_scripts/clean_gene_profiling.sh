@@ -89,7 +89,9 @@ EOF
 	fi
 
 
-root=/projects/afodor_research3/${USER}/HCT_Gut_Resistome_Pipeline/sequence_processing
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/../../configs/private.config"
+root=${HPC_PROJECTS}/HCT_Gut_Resistome_Study/HCT_Gut_Resistome_Pipeline/sequence_processing
 # pipelines=(Duke_short Duke_long Duke_hybrid UNC_short)
 
 for pipeline in "${pipelines[@]}"; do

@@ -12,13 +12,13 @@ python scripts/helper_scripts/00_processgenes.py \
 '''
 
 '''
-Test Usage: 
-python3 scripts/helper_scripts/00_processgenes.py 
-    /Users/aliciasorgen/Downloads/D13004D15_geneslist.tsv 
-    /Users/aliciasorgen/Downloads/D13004D15.amrfinder.tsv 
-    /Users/aliciasorgen/Downloads/D13004D15.rgi.txt
-    /Users/aliciasorgen/Downloads/bakta/D13004D15.tsv 
-    /Users/aliciasorgen/Downloads/D13004D15_gene_annotations.tsv
+Test Usage:
+python3 scripts/helper_scripts/00_processgenes.py
+    /path/to/scratch/<SAMPLE_ID>_geneslist.tsv
+    /path/to/scratch/<SAMPLE_ID>.amrfinder.tsv
+    /path/to/scratch/<SAMPLE_ID>.rgi.txt
+    /path/to/scratch/bakta/<SAMPLE_ID>.tsv
+    /path/to/scratch/<SAMPLE_ID>_gene_annotations.tsv
 '''
 # %% Import modules --------------------------------------------------------------------------------
 import pandas as pd
@@ -75,11 +75,11 @@ try:
 except SystemExit:
     # Set default values for interactive development
     print("Running in interactive mode - using default values.")
-    genefile = "/Users/aliciasorgen/scratch/BMT101D-7_geneslist.tsv"
-    amrfile = "/Users/aliciasorgen/scratch/BMT101D-7.amrfinder.tsv"
-    rgifile = "/Users/aliciasorgen/scratch/BMT101D-7.rgi.txt"
-    baktafile = "/Users/aliciasorgen/scratch/BMT101D-7.tsv"
-    outputfile = "/Users/aliciasorgen/scratch/BMT101D_gene_annotations.tsv"
+    genefile = "/path/to/scratch/<SAMPLE_ID>_geneslist.tsv"
+    amrfile = "/path/to/scratch/<SAMPLE_ID>.amrfinder.tsv"
+    rgifile = "/path/to/scratch/<SAMPLE_ID>.rgi.txt"
+    baktafile = "/path/to/scratch/<SAMPLE_ID>.tsv"
+    outputfile = "/path/to/scratch/<SAMPLE_ID>_gene_annotations.tsv"
 
 # %% Defining function to skip rows starting with '#' in Bakta file --------------------------------
 def get_skiprows(file_path, to_skip):
