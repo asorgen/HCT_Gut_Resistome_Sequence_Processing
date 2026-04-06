@@ -1,6 +1,7 @@
 .DS_Store
 pipelineScripts/configs/private.config
 CLAUDE.md
+
 # Data files (too large for git)
 *.fastq
 *.fastq.gz
@@ -80,3 +81,7 @@ Duke_long_pipeline_refactor_plan.md
 
 # Snakemake pipeline (in development, not ready for repo)
 snakemake/
+sequence_processing/snakemake/
+
+# Claude Code context files
+CLAUDE.md

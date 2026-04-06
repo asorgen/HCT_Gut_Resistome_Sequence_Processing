@@ -1,4 +1,8 @@
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/private.config"
+# Source private config for HPC paths (if not already sourced)
+if [[ -z "${HPC_PROJECTS}" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source "${SCRIPT_DIR}/private.config"
+fi
 
 # Function to easily run pipelines
 run_pipeline() {

@@ -108,6 +108,7 @@
         echo -e "${FASTQ}_2.fastq.gz"
         OUTPUT_MARKERS=$SB_MARKERS
         echo -e $OUTPUT_MARKERS
+            # ${SB_MARKERS}
         TEMP_DIR="${moduleDir}/${ID}_tmp"
         out=$moduleDir
 

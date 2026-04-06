@@ -49,6 +49,10 @@ source "${SCRIPT_DIR}/../../configs/private.config"
 
 	SECONDS=0
 
+# Source private config for HPC paths
+	SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+	source "${SCRIPT_DIR}/../../configs/private.config"
+
 # GTDB-tk database download
 	ROOT=${HPC_PROJECTS}/HCT_Gut_Resistome_Study/HCT_Gut_Resistome_Sequence_Processing
 	if [[ ! -d ${ROOT}/databases/GTDBtk/release220 ]]; then

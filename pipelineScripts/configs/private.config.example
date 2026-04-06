@@ -35,3 +35,9 @@ SEQ_PATH_DUKE_LONG=/path/to/duke/nanopore/raw_fastqs
 # These IDs will be skipped in all pipeline wrappers and helper scripts.
 # Add any samples that failed QC or should otherwise be excluded.
 exclude_ids="SAMPLE_ID_1 SAMPLE_ID_2"
+
+# Raw sequence data paths ------------------------------------------------------
+# Paths to the directories containing raw FASTQ files for each cohort/read type.
+SEQ_PATH_DUKE_SHORT=/projects/your_lab_group/datasets/your_duke_short_read_data
+SEQ_PATH_UNC_SHORT=/projects/your_lab_group/datasets/your_unc_short_read_data
+SEQ_PATH_DUKE_LONG=/projects/your_lab_group/datasets/your_duke_long_read_data
