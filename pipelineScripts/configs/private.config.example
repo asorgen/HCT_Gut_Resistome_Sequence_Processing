@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Private configuration for HCT_Gut_Resistome_Pipeline
+# Private configuration for HCT_Gut_Resistome_Sequence_Processing
 # =============================================================================
 # This file is a template. Copy it to private.config and fill in your values:
 #

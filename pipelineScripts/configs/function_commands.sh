@@ -7,7 +7,7 @@ run_pipeline() {
     dataset=${cohort}_${read}
     export version=$(date +"%Y.%m.%d")
     root=${HPC_PROJECTS}/HCT_Gut_Resistome_Study
-    pipeline_root=${root}/HCT_Gut_Resistome_Pipeline/sequence_processing
+    pipeline_root=${root}/HCT_Gut_Resistome_Sequence_Processing
     data_root=${root}/HCT_Gut_Resistome_Data
     cd $pipeline_root
     
@@ -31,7 +31,7 @@ check_jobs() {
     local read=$2
     local dataset=${cohort}_${read}
     local root=${HPC_PROJECTS}/HCT_Gut_Resistome_Study
-    local pipeline_root=${root}/HCT_Gut_Resistome_Pipeline/sequence_processing
+    local pipeline_root=${root}/HCT_Gut_Resistome_Sequence_Processing
     local data_root=${root}/HCT_Gut_Resistome_Data
 
     if [ -n "$3" ]; then
@@ -53,7 +53,7 @@ run_summary() {
     local read=$2
     local dataset=${cohort}_${read}
     local root=${HPC_PROJECTS}/HCT_Gut_Resistome_Study
-    local pipeline_root=${root}/HCT_Gut_Resistome_Pipeline/sequence_processing
+    local pipeline_root=${root}/HCT_Gut_Resistome_Sequence_Processing
     local data_root=${root}/HCT_Gut_Resistome_Data
     cd $pipeline_root
 

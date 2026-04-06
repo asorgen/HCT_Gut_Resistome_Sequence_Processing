@@ -79,4 +79,4 @@ UNC_short/
 Duke_long_pipeline_refactor_plan.md
 
 # Snakemake pipeline (in development, not ready for repo)
-sequence_processing/snakemake/
+snakemake/

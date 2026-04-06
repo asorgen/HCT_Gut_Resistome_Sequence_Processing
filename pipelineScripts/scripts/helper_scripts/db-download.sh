@@ -50,7 +50,7 @@ source "${SCRIPT_DIR}/../../configs/private.config"
 	SECONDS=0
 
 # GTDB-tk database download
-	ROOT=${HPC_PROJECTS}/HCT_Gut_Resistome_Study/HCT_Gut_Resistome_Pipeline/sequence_processing
+	ROOT=${HPC_PROJECTS}/HCT_Gut_Resistome_Study/HCT_Gut_Resistome_Sequence_Processing
 	if [[ ! -d ${ROOT}/databases/GTDBtk/release220 ]]; then
 	    H2 "GTDB-tk database download"
 
