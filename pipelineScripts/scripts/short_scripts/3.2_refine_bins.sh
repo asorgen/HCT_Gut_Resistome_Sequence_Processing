@@ -40,14 +40,7 @@
     source $bashrc
     source $bash_profile
     source $module_functions
-
-# Set function for output comments -----------------------------------------------------------------------------------------
-    H1 () { print_header.py "$1" "H1"; }
-    H2 () { print_header.py "$1" "H2"; }
-    H3 () { print_header.py "$1" "H3"; }
-    comment () { print_header.py "$1" "#"; echo; }
-    error () { echo $1; exit 1; }
-    pFunc () { echo $1; echo; }
+    source $print_functions
 
 # Print script information to log ------------------------------------------------------------------------------------------
     H1 "Description: 3.2_refine_bins.sh"
@@ -68,16 +61,15 @@
         comment "Running on host: `hostname`"
 
         Total_Gb=$(( SLURM_MEM_PER_NODE / 1024 ))
-
         JobTime=$(squeue -h -j $SLURM_JOBID -o "%l")
 
-        echo 
-        comment "----- Resources Requested -----"
-        comment "Nodes:            $SLURM_NNODES"
-        comment "Cores / node:     $SLURM_CPUS_PER_TASK"
-        comment "Total memory:     $Total_Gb Gb"
-        comment "Wall-clock time:  $JobTime"
-        comment "-------------------------------"
+        echo
+        print "----- Resources Requested -----"
+        print "Nodes:            $SLURM_NNODES"
+        print "Cores / node:     $SLURM_CPUS_PER_TASK"
+        print "Total memory:     $Total_Gb Gb"
+        print "Wall-clock time:  $JobTime"
+        print "-------------------------------"
 
     H1 "Variables"
         comment "SampleID (ID): ${ID}"
@@ -103,8 +95,8 @@
     Intermediate_files=()
 
 
-func="Bin Refinement"
-    H1 "Bin refinement (>${c}% completeness, <${x}% contamination"
+STEP="Bin Refinement"
+    H1 "Bin refinement (>${c}% completeness, <${x}% contamination)"
 
     outputFile=${out}/metawrap_${c}_${x}_bins.stats
     if [[ -s "$outputFile" ]]; then
@@ -112,12 +104,11 @@ func="Bin Refinement"
     else
         start=$SECONDS
         #------------
-        
+
         module load anaconda3/2023.09
         source /apps/pkg/anaconda3/2023.09/etc/profile.d/conda.sh
         conda init
         conda activate metawrap-env
-        checkm data setRoot $CHECKM_DB
 
         metawrap bin_refinement \
             -o ${out} \
@@ -134,21 +125,20 @@ func="Bin Refinement"
         end=$SECONDS; duration=$(( end-start ))
 
         if [[ -s "$outputFile" ]]; then
-            H2 "Yipee! $func Complete"
-            comment "$func: $(elapsed_time "$duration")"
+            H2 "Yipee! $STEP Complete"
+            comment "$STEP: $(elapsed_time "$duration")"
         fi
     fi
-    
+    step_completion "${outputFile}"
+
 
 echo -e "\nmetaWRAP bins:"; awk -v com="$c" -v con="$x" '$2 > com && $3 < con' ${out}/metawrap_${c}_${x}_bins.stats | wc -l
 echo -e "\nMetaBat2 bins:"; awk -v com="$c" -v con="$x" '$2 > com && $3 < con' ${out}/metabat2_bins.stats | wc -l
 echo -e "\nMaxBin2 bins:"; awk -v com="$c" -v con="$x" '$2 > com && $3 < con' ${out}/maxbin2_bins.stats | wc -l
 echo -e "\nCONCOCT bins:"; awk -v com="$c" -v con="$x" '$2 > com && $3 < con' ${out}/concoct_bins.stats | wc -l
 
-# Completion status
-    if [[ -s ${moduleDir}/${ID}/metawrap_${c}_${x}_bins.stats ]]; then
-        touch ${moduleDir}/COMPLETE/${ID}
-    fi
+# Completion
+    module_completion
 
 H1 "PIPELINE COMPLETE :)"
 duration=$SECONDS

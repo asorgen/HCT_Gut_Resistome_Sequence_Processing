@@ -40,14 +40,8 @@
     source $bashrc
     source $bash_profile
     source $module_functions
+    source $print_functions
 
-# Set function for output comments -----------------------------------------------------------------------------------------
-    H1 () { print_header.py "$1" "H1"; }
-    H2 () { print_header.py "$1" "H2"; }
-    H3 () { print_header.py "$1" "H3"; }
-    comment () { print_header.py "$1" "#"; echo; }
-    error () { echo $1; exit 1; }
-    pFunc () { echo $1; echo; }
 
 # Print script information to log ------------------------------------------------------------------------------------------
     H1 "Description: 3.2_refine_bins.sh"
@@ -71,12 +65,12 @@
         JobTime=$(squeue -h -j $SLURM_JOBID -o "%l")
 
         echo
-        comment "----- Resources Requested -----"
-        comment "Nodes:            $SLURM_NNODES"
-        comment "Cores / node:     $SLURM_CPUS_PER_TASK"
-        comment "Total memory:     $Total_Gb Gb"
-        comment "Wall-clock time:  $JobTime"
-        comment "-------------------------------"
+        print "----- Resources Requested -----"
+        print "Nodes:            $SLURM_NNODES"
+        print "Cores / node:     $SLURM_CPUS_PER_TASK"
+        print "Total memory:     $Total_Gb Gb"
+        print "Wall-clock time:  $JobTime"
+        print "-------------------------------"
 
     H1 "Variables"
         comment "SampleID (ID): ${ID}"
