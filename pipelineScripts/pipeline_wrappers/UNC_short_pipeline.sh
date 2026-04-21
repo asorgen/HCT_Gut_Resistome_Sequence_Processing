@@ -84,7 +84,7 @@
         
         module=0
         if echo "${exclude_ids}" | grep -qw "$ID"; then continue; fi
-        if [[ $count -ge 5 ]]; then continue; fi
+        if [[ $count -ge 25 ]]; then continue; fi
 
         ##- 0.1 Pre-QC
             if $run_pre_qc; then
