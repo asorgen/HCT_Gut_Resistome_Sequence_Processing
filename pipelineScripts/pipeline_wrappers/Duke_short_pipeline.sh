@@ -450,6 +450,28 @@
             fi
             
 
+        ##- 5.7 WAAFLE — lateral gene transfer detection from assembled contigs
+            if $run_waafle; then
+                module_setup 5.7_waafle.sh
+
+                # Module inputs -------------
+                header3="WAAFLE LGT detection"
+                DEPENDENT_JOB=(${EVALUATION_JOB##* })
+                hpc_opts=$waafle_opts
+                pipeline_tag=waafle
+                export evaluationDir
+                export CHOCOPHLAN_BLAST_DB
+                export WAAFLE_ENV
+                export waafleDir
+                # ---------------------------
+
+                run_module
+                WAAFLE_JOB=$Current_Job
+                CLEAN_UP_DEP+=(${Current_Job##* })
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
+
+
         ##- 6.1 Discard intermediate files
             if $run_clean_up; then
                 module_setup COMPLETE.sh
