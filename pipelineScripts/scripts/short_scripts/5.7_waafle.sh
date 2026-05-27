@@ -123,7 +123,7 @@ func="WAAFLE gene caller (ORF prediction)"
         comment "Output already found. Skipping..."
     else
         start=$SECONDS
-        waafle_genecaller "$filteredContigs" --out "$gffOut"
+        waafle_genecaller "$blastOut" --gff "$gffOut"
         [[ $? -ne 0 ]] && error "waafle_genecaller failed for $ID"
         N_GENES=$(wc -l < "$gffOut")
         comment "Predicted ORFs: $N_GENES"
@@ -142,6 +142,7 @@ func="WAAFLE org scorer (LGT classification)"
             "$filteredContigs" \
             "$blastOut" \
             "$gffOut" \
+            "$CHOCOPHLAN_TAXONOMY" \
             --basename "${moduleDir}/${ID}/${ID}"
         [[ $? -ne 0 ]] && error "waafle_orgscorer failed for $ID"
 

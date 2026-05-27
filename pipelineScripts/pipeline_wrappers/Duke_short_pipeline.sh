@@ -461,6 +461,7 @@
                 pipeline_tag=waafle
                 export evaluationDir
                 export CHOCOPHLAN_BLAST_DB
+                export CHOCOPHLAN_TAXONOMY
                 export WAAFLE_ENV
                 export waafleDir
                 # ---------------------------
