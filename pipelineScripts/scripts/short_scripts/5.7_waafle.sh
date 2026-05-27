@@ -79,6 +79,7 @@
     module load anaconda3/2023.09
     source $miniforge_init
     conda activate $WAAFLE_ENV
+    module load blast/2.15.0+
     module load seqtk
 
 # Run functions ------------------------------------------------------------------------------------------------------------
