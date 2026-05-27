@@ -61,8 +61,7 @@
         H2 "Output"
             if [[ ! -d ${moduleDir}/${ID} ]]; then mkdir -p ${moduleDir}/${ID}; fi
             filteredContigs=${moduleDir}/${ID}/${ID}_contigs_1kb.fasta
-            searchOut=${moduleDir}/${ID}/${ID}
-            blastOut=${moduleDir}/${ID}/${ID}.blastout
+            blastOut=${moduleDir}/${ID}/${ID}
             gffOut=${moduleDir}/${ID}/${ID}.gff
             lgtOut=${moduleDir}/${ID}/${ID}.lgt.tsv
             noLgtOut=${moduleDir}/${ID}/${ID}.no_lgt.tsv
@@ -108,7 +107,7 @@ func="WAAFLE search (blastn vs ChocoPhlAn)"
         waafle_search \
             "$filteredContigs" \
             "$CHOCOPHLAN_BLAST_DB" \
-            --out "$searchOut" \
+            --out "$blastOut" \
             --threads $SLURM_CPUS_PER_TASK
         [[ $? -ne 0 ]] && error "waafle_search failed for $ID"
         HITS=$(wc -l < "$blastOut")
