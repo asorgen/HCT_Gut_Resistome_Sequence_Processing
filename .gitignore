@@ -85,3 +85,4 @@ sequence_processing/snakemake/
 
 # Claude Code context files
 CLAUDE.md
+pipelineScripts/scripts/short_scripts/1.1_assembly_only_asm.sh
