@@ -473,6 +473,28 @@
             fi
 
 
+        ##- 5.8 HUMAnN — whole-community gene-family/pathway profiling
+            if $run_humann; then
+                module_setup 5.8_humann.sh
+
+                # Module inputs -------------
+                header3="HUMAnN gene-family/pathway profiling"
+                DEPENDENT_JOB=(${DECONTAM_JOB##* })
+                hpc_opts=$humann_opts
+                pipeline_tag=humann
+                export clean_readDir
+                export HUMANN_CHOCOPHLAN
+                export HUMANN_UNIREF
+                export humannDir
+                # ---------------------------
+
+                run_module
+                HUMANN_JOB=$Current_Job
+                CLEAN_UP_DEP+=(${Current_Job##* })
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
+
+
         ##- 6.1 Discard intermediate files
             if $run_clean_up; then
                 module_setup COMPLETE.sh
