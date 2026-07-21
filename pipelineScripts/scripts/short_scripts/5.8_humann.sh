@@ -16,12 +16,24 @@
     # Companion analysis for [[Build taxonomy and gene-family companion
     # analyses for SNP paper]] — whole-community gene-family profiling to pair
     # with the null SNP-level in-lineage-selection result. NOTE: humann_opts
-    # (Duke_short-read.config) is an unbenchmarked starting guess pending
-    # single-sample validation — see that config's comment.
+    # (Duke_short-read.config) is a benchmarked value (2026-07-20, D13004D15) -
+    # see that config's comment.
+    #
+    # IMPORTANT (added 2026-07-21 after a real incident): HUMAnN's diamond
+    # translated-search step writes very large per-sample temp files (50-120+
+    # GB observed) as a subdirectory of --output. Running this on the project
+    # filesystem (HPC_PROJECTS, shared 50TB lab volume) at cohort-wide
+    # concurrency filled it to 100% and failed 135/214 jobs mid-run. HUMAnN
+    # has no dedicated --temp-dir flag, so --output itself is redirected to a
+    # per-sample staging dir on HPC_SCRATCH (much more headroom) and only the
+    # small final result tables are copied back to the real project-space
+    # module directory afterward; the scratch staging dir is removed
+    # regardless of success/failure (not just on the --remove-temp-output
+    # happy path, which never runs if the job crashes).
     #
     # Created on 2026-07-20
     # @author: Alicia Sorgen - UNC Charlotte Dept of Bioinformatics and Genomics
-    # Version: 1
+    # Version: 2
 
 # Config files -------------------------------------------------------------------------------------------------------------
     source $pipelineConfig
@@ -62,37 +74,44 @@
 
         H2 "Output"
             if [[ ! -d ${moduleDir}/${ID} ]]; then mkdir -p ${moduleDir}/${ID}; fi
-            concatFastq=${moduleDir}/${ID}/${ID}_concat.fastq.gz
             geneFamiliesOut=${moduleDir}/${ID}/${ID}_genefamilies.tsv
             pathAbundOut=${moduleDir}/${ID}/${ID}_pathabundance.tsv
             pathCovOut=${moduleDir}/${ID}/${ID}_pathcoverage.tsv
             if [[ ! -d ${moduleDir}/COMPLETE ]]; then mkdir -p ${moduleDir}/COMPLETE; fi
 
+        H2 "Scratch staging (see script header - HUMAnN temp output does NOT go on the project filesystem)"
+            stagingDir=${HPC_SCRATCH}/humann_staging/${ID}
+            mkdir -p "$stagingDir"
+            # Runs on ANY exit (success, error()'s exit 1, or a crash) - this is
+            # the fix for the 2026-07-21 incident, where crashed jobs left their
+            # scratch temp files behind indefinitely.
+            trap 'rm -rf "$stagingDir"' EXIT
+            concatFastq=${stagingDir}/${ID}_concat.fastq.gz
+            stagingGeneFamilies=${stagingDir}/${ID}_genefamilies.tsv
+            stagingPathAbund=${stagingDir}/${ID}_pathabundance.tsv
+            stagingPathCov=${stagingDir}/${ID}_pathcoverage.tsv
+
     H2 "[ Start ]"
     /bin/date
     SECONDS=0
     Complete_tag=("$geneFamiliesOut" "$pathAbundOut")
-    Intermediate_files=("$concatFastq")
+    Intermediate_files=()
 
 # Load environments --------------------------------------------------------------------------------------------------------
     module load humann/3.8
 
 # Run functions ------------------------------------------------------------------------------------------------------------
 
-func="Concatenate paired reads"
+func="Concatenate paired reads (on scratch)"
     H1 "$func"
-    if [[ -s "$concatFastq" ]]; then
-        comment "Output already found. Skipping..."
-    else
-        start=$SECONDS
-        cat "$R1" "$R2" > "$concatFastq"
-        [[ $? -ne 0 ]] && error "Concatenation failed for $ID"
-        end=$SECONDS; comment "Elapsed: $(elapsed_time $((end - start)))"
-    fi
+    start=$SECONDS
+    cat "$R1" "$R2" > "$concatFastq"
+    [[ $? -ne 0 ]] && error "Concatenation failed for $ID"
+    end=$SECONDS; comment "Elapsed: $(elapsed_time $((end - start)))"
     step_completion "$concatFastq"
 
 
-func="HUMAnN gene-family/pathway profiling"
+func="HUMAnN gene-family/pathway profiling (staged on scratch)"
     H1 "$func"
     if [[ -s "$geneFamiliesOut" ]]; then
         comment "Output already found. Skipping..."
@@ -100,13 +119,21 @@ func="HUMAnN gene-family/pathway profiling"
         start=$SECONDS
         humann \
             --input "$concatFastq" \
-            --output "${moduleDir}/${ID}" \
+            --output "$stagingDir" \
             --output-basename "${ID}" \
             --threads $SLURM_CPUS_PER_TASK \
             --nucleotide-database "$HUMANN_CHOCOPHLAN" \
             --protein-database "$HUMANN_UNIREF" \
             --remove-temp-output
         [[ $? -ne 0 ]] && error "humann failed for $ID"
+        step_completion "$stagingGeneFamilies" "$stagingPathAbund"
+
+        comment "Copying final tables from scratch staging to ${moduleDir}/${ID}/"
+        cp "$stagingGeneFamilies" "$geneFamiliesOut"
+        cp "$stagingPathAbund" "$pathAbundOut"
+        cp "$stagingPathCov" "$pathCovOut"
+        [[ $? -ne 0 ]] && error "Copy from scratch staging failed for $ID"
+
         N_GENEFAM=$(($(wc -l < "$geneFamiliesOut") - 1))
         comment "Gene families quantified: $N_GENEFAM"
         end=$SECONDS; comment "Elapsed: $(elapsed_time $((end - start)))"
@@ -118,12 +145,11 @@ func="HUMAnN gene-family/pathway profiling"
     output_exists=$(test_for_output "${Complete_tag[@]}")
     if $output_exists; then
         touch ${moduleDir}/COMPLETE/$ID
-        for int_file in "${Intermediate_files[@]}"; do
-            echo -e "rm $int_file"; rm -f "$int_file"
-        done
     else
         error "Not all outputs were created."
     fi
+    # Scratch staging dir removal is handled by the EXIT trap set above -
+    # runs here on success too, not just on error()'s exit.
 
 H1 "PIPELINE COMPLETE :)"
 duration=$SECONDS
