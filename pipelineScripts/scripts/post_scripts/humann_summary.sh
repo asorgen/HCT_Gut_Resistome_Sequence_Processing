@@ -30,14 +30,17 @@
 # Each step checks for its own output first so a rerun resumes rather than
 # redoing the (slow) joins.
 #
-# Usage: sbatch humann_summary.sh
+# Usage (HPC_PROJECTS must be set/exported in the submitting shell first -
+# sbatch inherits the submitting shell's environment by default; SLURM stages
+# the script into a spool dir before running it, so a BASH_SOURCE-relative
+# `source .../private.config` from inside the script does NOT work here):
+#   source pipelineScripts/configs/private.config
+#   sbatch humann_summary.sh
 
 set -euo pipefail
 module load humann/3.8
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/../../configs/private.config"
-
+: "${HPC_PROJECTS:?HPC_PROJECTS not set - source pipelineScripts/configs/private.config before sbatch-ing this script}"
 ROOT=${HPC_PROJECTS}/HCT_Gut_Resistome_Study
 HUMANN_DIR=${ROOT}/HCT_Gut_Resistome_Data/unprocessed/Duke/Duke_short/5.8_humann
 OUT_DIR=${ROOT}/HCT_Gut_Resistome_Data/processed/Duke/Duke_short_tables
