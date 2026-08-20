@@ -9,6 +9,7 @@ CLAUDE.md
 *.fq.gz
 *.bam
 *.sam
+.nfs*
 
 # R artifacts
 .Rhistory

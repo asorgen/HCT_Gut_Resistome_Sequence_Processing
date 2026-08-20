@@ -17,8 +17,10 @@ run_pipeline() {
         echo "  stop_at   Optional pipeline tag passed to the wrapper to halt after that module"
         echo "            (e.g. trim, kraken, bins)"
         echo ""
-        echo "Wrapper called: pipelineScripts/pipeline_wrappers/<cohort>_<read>_pipeline.sh"
-        echo "Log written to: HCT_Gut_Resistome_Data/unprocessed/<cohort>/<cohort>_<read>/LOGs/"
+        echo "Short-read cohorts run through the generic wrapper:"
+        echo "  pipelineScripts/pipeline_wrappers/run_short_pipeline.sh <cohort>_<read>"
+        echo "Long/hybrid still use their own wrappers: <cohort>_<read>_pipeline.sh"
+        echo "Log written to the config's own datasetDir/LOGs/"
         return 0
     fi
     cohort=$1
@@ -27,19 +29,42 @@ run_pipeline() {
     export version=$(date +"%Y.%m.%d")
     root=${HPC_PROJECTS}/HCT_Gut_Resistome_Study
     pipeline_root=${root}/HCT_Gut_Resistome_Sequence_Processing
-    data_root=${root}/HCT_Gut_Resistome_Data
     cd $pipeline_root
-    
-    local log_file="${data_root}/unprocessed/${cohort}/${dataset}/LOGs/${dataset}_pipeline_$version.out"
-    local script="${pipeline_root}/pipelineScripts/pipeline_wrappers/${dataset}_pipeline.sh"
-    
-    if [ -n "$3" ]; then
-        echo "nohup sh $script $3 >> $log_file 2>&1 &"
-        nohup sh "$script" "$3" >> "$log_file" 2>&1 &
-    else
-        echo "nohup sh $script >> $log_file 2>&1 &"
-        nohup sh "$script" >> "$log_file" 2>&1 &
+
+    local config_file="${pipeline_root}/pipelineScripts/configs/${dataset}-read.config"
+    if [[ ! -f "$config_file" ]]; then
+        echo "No such config: ${config_file}"
+        cd - >/dev/null
+        return 1
     fi
+
+    # Take the log location from the config rather than reconstructing it — DATA_ROOT
+    # is no longer always under HCT_Gut_Resistome_Data (Heston lives beside its FASTQs
+    # on /projects/afodor_research). Read it in a subshell so sourcing the config
+    # doesn't leak its variables into the caller's interactive shell.
+    local datasetDir
+    datasetDir=$(source "$config_file" >/dev/null 2>&1; echo "$datasetDir")
+    if [[ -z "$datasetDir" ]]; then
+        echo "Config ${config_file} did not define datasetDir"
+        cd - >/dev/null
+        return 1
+    fi
+
+    # Build the command as an array — the short-read form carries the config name as
+    # a second word, which a quoted "$script" would collapse into one filename.
+    local -a cmd
+    if [[ "$read" == "short" ]]; then
+        cmd=("${pipeline_root}/pipelineScripts/pipeline_wrappers/run_short_pipeline.sh" "$dataset")
+    else
+        cmd=("${pipeline_root}/pipelineScripts/pipeline_wrappers/${dataset}_pipeline.sh")
+    fi
+    [ -n "$3" ] && cmd+=("$3")
+
+    mkdir -p "${datasetDir}/LOGs"
+    local log_file="${datasetDir}/LOGs/${dataset}_pipeline_$version.out"
+
+    echo "nohup sh ${cmd[*]} >> $log_file 2>&1 &"
+    nohup sh "${cmd[@]}" >> "$log_file" 2>&1 &
     
     cd -
 }

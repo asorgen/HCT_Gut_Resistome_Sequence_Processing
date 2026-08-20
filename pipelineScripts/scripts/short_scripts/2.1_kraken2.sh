@@ -126,8 +126,53 @@ STEP="Kraken2"
 STEP="Bracken"
 
     H1 "$STEP"
+
+    # Bracken's k-mer distribution is built for a specific read length, so estimating
+    # short reads against a distribution built for longer ones biases abundances.
+    # Pick the longest available distribution that does not exceed this sample's mean
+    # read length. Duke/UNC (150-151bp) resolve to database150mers and are therefore
+    # byte-identical to previous runs; cohorts with shorter reads (e.g. PRJNA890666,
+    # much of which is ~126bp) drop to the appropriate shorter distribution.
+    DEFAULT_KMER_DISTRIB=${KRAKEN2_DB}/database150mers.kmer_distrib
+
+    read_len=$(head -n 4000 "${reads_1}" 2>/dev/null \
+               | awk 'NR%4==2 {s+=length($0); n++} END {if (n>0) printf "%d", s/n}')
+
+    # Available distributions, ascending
+    avail=()
+    for f in ${KRAKEN2_DB}/database*mers.kmer_distrib; do
+        [[ -e $f ]] || continue
+        n=$(basename "$f"); n=${n#database}; n=${n%mers.kmer_distrib}
+        [[ $n =~ ^[0-9]+$ ]] && avail+=("$n")
+    done
+    if [[ ${#avail[@]} -gt 0 ]]; then
+        IFS=$'\n' avail=($(sort -n <<<"${avail[*]}")); unset IFS
+    fi
+
+    kmer_distrib=$DEFAULT_KMER_DISTRIB
+    if [[ -n "$read_len" && "$read_len" -gt 0 && ${#avail[@]} -gt 0 ]]; then
+        best=""
+        for n in "${avail[@]}"; do
+            [[ $n -le $read_len ]] && best=$n
+        done
+        # Reads shorter than every available distribution fall back to the smallest.
+        [[ -z $best ]] && best=${avail[0]}
+        [[ -s ${KRAKEN2_DB}/database${best}mers.kmer_distrib ]] && \
+            kmer_distrib=${KRAKEN2_DB}/database${best}mers.kmer_distrib
+    fi
+
+    comment "Mean read length: ${read_len:-unknown} bp"
+    comment "Bracken k-mer distribution (reads): $(basename ${kmer_distrib})"
+
     for file in ${k_out}/*.kreport; do
-        python3 $bracken/est_abundance.py -i $file -k ${KRAKEN2_DB}/database150mers.kmer_distrib --level S -o ${file%.*}.bracken.out
+        # Assembly kreports are contigs rather than reads, so they stay on the
+        # original distribution - this keeps full-mode Duke/UNC output unchanged.
+        if [[ $(basename "$file") == *_assembly.kreport ]]; then
+            kd=$DEFAULT_KMER_DISTRIB
+        else
+            kd=$kmer_distrib
+        fi
+        python3 $bracken/est_abundance.py -i $file -k ${kd} --level S -o ${file%.*}.bracken.out
         if [[ $? -ne 0 ]]; then error "Something went wrong while running Bracken. Exiting..."; fi
     done
 

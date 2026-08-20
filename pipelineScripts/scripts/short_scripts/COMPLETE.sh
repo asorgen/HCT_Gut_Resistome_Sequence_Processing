@@ -125,13 +125,18 @@ STEP="Sequence Processing"
 Final_Fastqs=(${clean_readDir}/${ID}_1.fastq.gz ${clean_readDir}/${ID}_2.fastq.gz)
 step_completion "${Final_Fastqs[@]}"
 
-# 2.1_kraken2
-STEP="Kraken2"
-Intermediate_files+=(${krakenDir}/${ID}/${ID}.krak2 ${krakenDir}/${ID}/${ID}.kraken2)
+# 2.1_kraken2 / 2.2_bracken
+# Gated on run_k2 like every other optional module. Without the gate, a QC-only
+# run (kraken2 off) hits step_completion on a bracken output that was never
+# produced, which calls error/exit 1 - so cleanup fails and nothing is reclaimed.
+# Duke/UNC set run_k2=true, so their behaviour is unchanged.
+if $run_k2; then
+    STEP="Kraken2"
+    Intermediate_files+=(${krakenDir}/${ID}/${ID}.krak2 ${krakenDir}/${ID}/${ID}.kraken2)
 
-# 2.2_bracken
-STEP="Taxonomic Classification"
-step_completion "${brackenDir}/sr/${ID}.bracken.out"
+    STEP="Taxonomic Classification"
+    step_completion "${brackenDir}/sr/${ID}.bracken.out"
+fi
 
 # 5.3_shortbred
 if $run_shortbred; then
