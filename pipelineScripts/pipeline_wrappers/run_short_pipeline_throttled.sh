@@ -108,18 +108,38 @@ while true; do
     submitted=$(echo "$out" | grep -c "^Submitted batch job" || true)
     echo "[$(date '+%F %T')] round ${round}: submitted ${submitted} jobs" | tee -a "$DRIVER_LOG"
 
-    # Nothing submitted and nothing running means there is no work left. This is
-    # the only exit condition — it covers both "all done" and "everything else is
-    # permanently failing", so check the log rather than assuming success.
+    # Nothing submitted means there is no work the wrapper can start right now.
+    #
+    # Do NOT just sleep briefly and loop: while the last few samples are still
+    # running, inflight sits at or below DRAIN_TO, so the drain-wait above is
+    # skipped and we would re-invoke the wrapper every few seconds. Each
+    # invocation walks the entire sample list stat-ing COMPLETE flags over NFS.
+    # (Observed 2026-08-21: 250 of 256 rounds submitted zero jobs, spinning for
+    # ~25 min while one sample finished.)
+    #
+    # Instead: wait for the queue to fully drain, then make one final pass. That
+    # pass picks up anything that failed and needs a retry. If it also submits
+    # nothing with an empty queue, there genuinely is no work left.
     if [[ $submitted -eq 0 ]]; then
-        sleep 5
-        if [[ $(inflight) -eq 0 ]]; then
-            echo "[$(date '+%F %T')] no work submitted and queue empty - stopping" \
+        while [[ $(inflight) -gt 0 ]]; do sleep "$POLL"; done
+
+        final_out=$(MAX_SAMPLES_PER_RUN=$BATCH_SIZE \
+                    bash "${SCRIPT_DIR}/run_short_pipeline.sh" "$CONFIG_ARG" 2>&1)
+        echo "$final_out" >> "$DRIVER_LOG"
+        final_n=$(echo "$final_out" | grep -c "^Submitted batch job" || true)
+
+        if [[ $final_n -eq 0 ]]; then
+            echo "[$(date '+%F %T')] queue empty and nothing left to submit - stopping" \
                 | tee -a "$DRIVER_LOG"
             break
         fi
+        echo "[$(date '+%F %T')] final pass submitted ${final_n} retry jobs" \
+            | tee -a "$DRIVER_LOG"
     fi
 done
+
+# The queue is drained by the loop above before it breaks, so this count is taken
+# after the last cleanup job has written its flag - not a mid-flight snapshot.
 
 final=$(done_count)
 echo "=== Finished: ${final}/${total} samples complete ===" | tee -a "$DRIVER_LOG"
