@@ -37,8 +37,15 @@
     source $config_file
     source $bashrc
     source $bash_profile
-    source module_functions
-    source print_functions
+    # NB: these were missing their `$` (`source module_functions`), so they resolved
+    # as literal filenames and silently failed. Every helper - H1/comment/print,
+    # test_for_output, step_completion, substep_completion - was then undefined.
+    # That is not just log noise: the completion check `if $output_exists` expanded
+    # to an EMPTY command, which bash treats as TRUE, so this module wrote its
+    # COMPLETE flag even on a failed run. Fixed 2026-08-27. 5.4_rgi_bwt.sh has
+    # always had the correct form.
+    source $module_functions
+    source $print_functions
 
 
 # Print script information to log ------------------------------------------------------------------------------------------
