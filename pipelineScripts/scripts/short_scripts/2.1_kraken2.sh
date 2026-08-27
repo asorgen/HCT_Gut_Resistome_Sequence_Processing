@@ -127,52 +127,43 @@ STEP="Bracken"
 
     H1 "$STEP"
 
-    # Bracken's k-mer distribution is built for a specific read length, so estimating
-    # short reads against a distribution built for longer ones biases abundances.
-    # Pick the longest available distribution that does not exceed this sample's mean
-    # read length. Duke/UNC (150-151bp) resolve to database150mers and are therefore
-    # byte-identical to previous runs; cohorts with shorter reads (e.g. PRJNA890666,
-    # much of which is ~126bp) drop to the appropriate shorter distribution.
-    DEFAULT_KMER_DISTRIB=${KRAKEN2_DB}/database150mers.kmer_distrib
+    # Bracken's k-mer distribution is built for a specific read length. A per-sample
+    # selection was trialled here and then REVERTED — measured post-QC read lengths
+    # (2026-08-26, `seqkit stats -a` over every sample in all three cohorts, after
+    # this pipeline's own `trim_galore --length 50`) show the cohorts converge:
+    #
+    #   cohort   files   avg_len min/median/max    samples averaging >=150bp
+    #   Heston    1508    83.1 / 135.0 / 147.4     0
+    #   Duke       428   105.2 / 138.4 / 146.9     0
+    #   UNC        402   112.3 / 140.0 / 149.1     0
+    #
+    # Median mean-read-length lands within 5bp across cohorts and NO sample in any
+    # cohort averages >=150bp, so per-sample selection buys no accuracy. Worse, it
+    # would inject a cross-cohort differential into the p-value comparison: the
+    # Duke/UNC Bracken outputs in the manuscript were produced in Feb 2026 with
+    # database150mers, so routing Heston to a shorter build is precisely the
+    # asymmetry the selection was meant to prevent.
+    #
+    # 150 is also the closer of the available builds to a ~135-140bp read
+    # (|135-150| = 15 vs |135-100| = 35).
+    #
+    # Override per-cohort in the config ONLY with measured justification.
+    : "${BRACKEN_KMER_DISTRIB:=${KRAKEN2_DB}/database150mers.kmer_distrib}"
 
+    if [[ ! -s "$BRACKEN_KMER_DISTRIB" ]]; then
+        error "Bracken k-mer distribution not found: ${BRACKEN_KMER_DISTRIB}"
+    fi
+
+    # Measured for the log only — it does NOT drive selection. Recorded so each run
+    # carries provenance of what the reads actually were.
     read_len=$(head -n 4000 "${reads_1}" 2>/dev/null \
                | awk 'NR%4==2 {s+=length($0); n++} END {if (n>0) printf "%d", s/n}')
 
-    # Available distributions, ascending
-    avail=()
-    for f in ${KRAKEN2_DB}/database*mers.kmer_distrib; do
-        [[ -e $f ]] || continue
-        n=$(basename "$f"); n=${n#database}; n=${n%mers.kmer_distrib}
-        [[ $n =~ ^[0-9]+$ ]] && avail+=("$n")
-    done
-    if [[ ${#avail[@]} -gt 0 ]]; then
-        IFS=$'\n' avail=($(sort -n <<<"${avail[*]}")); unset IFS
-    fi
-
-    kmer_distrib=$DEFAULT_KMER_DISTRIB
-    if [[ -n "$read_len" && "$read_len" -gt 0 && ${#avail[@]} -gt 0 ]]; then
-        best=""
-        for n in "${avail[@]}"; do
-            [[ $n -le $read_len ]] && best=$n
-        done
-        # Reads shorter than every available distribution fall back to the smallest.
-        [[ -z $best ]] && best=${avail[0]}
-        [[ -s ${KRAKEN2_DB}/database${best}mers.kmer_distrib ]] && \
-            kmer_distrib=${KRAKEN2_DB}/database${best}mers.kmer_distrib
-    fi
-
-    comment "Mean read length: ${read_len:-unknown} bp"
-    comment "Bracken k-mer distribution (reads): $(basename ${kmer_distrib})"
+    comment "Mean read length (first 1000 reads): ${read_len:-unknown} bp"
+    comment "Bracken k-mer distribution: $(basename ${BRACKEN_KMER_DISTRIB}) (uniform across cohorts)"
 
     for file in ${k_out}/*.kreport; do
-        # Assembly kreports are contigs rather than reads, so they stay on the
-        # original distribution - this keeps full-mode Duke/UNC output unchanged.
-        if [[ $(basename "$file") == *_assembly.kreport ]]; then
-            kd=$DEFAULT_KMER_DISTRIB
-        else
-            kd=$kmer_distrib
-        fi
-        python3 $bracken/est_abundance.py -i $file -k ${kd} --level S -o ${file%.*}.bracken.out
+        python3 $bracken/est_abundance.py -i $file -k ${BRACKEN_KMER_DISTRIB} --level S -o ${file%.*}.bracken.out
         if [[ $? -ne 0 ]]; then error "Something went wrong while running Bracken. Exiting..."; fi
     done
 
