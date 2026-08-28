@@ -90,7 +90,7 @@
     # An undefined flag makes `if $run_x` expand to an empty command, which bash
     # treats as TRUE — so a config that simply omits a module would silently RUN it.
     # Defaulting every flag to false after sourcing makes omission mean "skip".
-    for _flag in pre_qc dedup trim decontam asm eval k2 m4 bin refine reassem \
+    for _flag in pre_qc dedup trim decontam depth_filter asm eval k2 m4 bin refine reassem \
                  classify annotate amr_nt_asm amr_nt_bin shortbred rgi_bwt \
                  amr_aa_asm amr_aa_bin waafle humann clean_up; do
         eval ": \${run_${_flag}:=false}"
@@ -247,9 +247,41 @@
                 # ---------------------------
                 
                 run_module
-                DECONTAM_JOB=$Current_Job    
+                DECONTAM_JOB=$Current_Job
                 CLEAN_UP_DEP+=(${Current_Job##* })
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
+
+
+        ##- 0.5 Read depth filter
+            if $run_depth_filter; then
+                module_setup 0.5_read_depth_filter.sh
+
+                # Module inputs -------------
+                header3="Read depth filter"
+                DEPENDENT_JOB=(${DECONTAM_JOB##* })
+                hpc_opts=$depth_filter_opts
+                pipeline_tag=depth_filter
+                export clean_readDir
+                export depthFilterDir
+                export MIN_CLEAN_READS
+                # ---------------------------
+
+                run_module
+                DEPTH_FILTER_JOB=$Current_Job
+                CLEAN_UP_DEP+=(${Current_Job##* })
+                if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
+            fi
+
+        # Skip everything downstream for samples module 0.5 marked EXCLUDED.
+        # The marker only exists once 0.5 has actually run, so on the pass that
+        # first submits 0.5 the sample simply proceeds and is caught next pass -
+        # which is fine, because the driver re-invokes until no work is left.
+        # Cleanup is skipped too: COMPLETE.sh checks for bracken output whenever
+        # run_k2 is true, and an excluded sample never produces any.
+            if [[ -n "$depthFilterDir" && -e "${depthFilterDir}/EXCLUDED/${ID}" ]]; then
+                echo "[ ${ID} ] excluded by read-depth filter (< ${MIN_CLEAN_READS} read pairs) - skipping downstream modules"
+                continue
             fi
 
 
