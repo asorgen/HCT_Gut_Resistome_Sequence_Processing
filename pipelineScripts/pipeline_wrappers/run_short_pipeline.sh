@@ -273,15 +273,35 @@
                 if [[ "$1" = "$pipeline_tag" ]]; then continue; fi
             fi
 
-        # Skip everything downstream for samples module 0.5 marked EXCLUDED.
-        # The marker only exists once 0.5 has actually run, so on the pass that
-        # first submits 0.5 the sample simply proceeds and is caught next pass -
-        # which is fine, because the driver re-invokes until no work is left.
-        # Cleanup is skipped too: COMPLETE.sh checks for bracken output whenever
-        # run_k2 is true, and an excluded sample never produces any.
-            if [[ -n "$depthFilterDir" && -e "${depthFilterDir}/EXCLUDED/${ID}" ]]; then
-                echo "[ ${ID} ] excluded by read-depth filter (< ${MIN_CLEAN_READS} read pairs) - skipping downstream modules"
-                continue
+        # Gate everything downstream on the read-depth filter.
+        #
+        # Two cases, and BOTH are needed. Module 0.5 always exits 0 (exclusion is a
+        # result, not an error - failing would strand downstream jobs in
+        # DependencyNeverSatisfied), so a SLURM dependency cannot gate on it. The
+        # gating has to happen here, at submission time.
+        #
+        #   1. Verdict known and EXCLUDED -> skip the sample entirely.
+        #   2. Verdict NOT yet known because 0.5 was only just submitted on this
+        #      pass -> defer. Without this, a sample's first pass submits
+        #      kraken2/rgi before the filter has run, so depleted samples get fully
+        #      processed anyway and the filter saves no compute. Observed on the
+        #      2026-08-27 Heston run: all 754 went through kraken2 despite 59
+        #      exclusions.
+        #
+        # Deferring costs one extra round per batch; the driver re-invokes until no
+        # work is left, so it resolves on its own.
+        #
+        # Cleanup is skipped for excluded samples too: COMPLETE.sh checks for
+        # bracken output whenever run_k2 is true, and they never produce any.
+            if $run_depth_filter; then
+                if [[ -e "${depthFilterDir}/EXCLUDED/${ID}" ]]; then
+                    echo "[ ${ID} ] excluded by read-depth filter (< ${MIN_CLEAN_READS} read pairs) - skipping downstream modules"
+                    continue
+                fi
+                if [[ "$DEPTH_FILTER_JOB" != "COMPLETE" ]]; then
+                    echo "[ ${ID} ] read-depth filter pending - downstream modules deferred to the next pass"
+                    continue
+                fi
             fi
 
 

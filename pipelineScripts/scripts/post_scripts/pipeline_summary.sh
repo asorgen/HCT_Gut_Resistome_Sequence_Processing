@@ -172,34 +172,80 @@ for pipeline in "${PIPELINES[@]}"; do
 	# read_qc
 		
 		if $read_qc; then 
-			if [[ $pipeline = "Duke_short" || $pipeline = "Duke_long" || $pipeline = "UNC_short" ]]; then
+			# Stale allow-list: new cohorts must be added here or read_qc is silently
+			# skipped for them. That matters beyond the QC tables themselves - the
+			# rgi_bwt summarizer reads <pipeline>_post-QC_report.tsv to get N for its
+			# FPKM normalisation, so omitting a cohort here makes rgi_bwt fail with a
+			# FileNotFoundError. Heston_short added 2026-08-27.
+			if [[ $pipeline = "Duke_short" || $pipeline = "Duke_long" || $pipeline = "UNC_short" || $pipeline = "Heston_short" ]]; then
 				SECONDS=0
 				H2 "read_qc"
 				module load multiqc
+
+				# MultiQC used to emit multiqc_data/multiqc_general_stats.txt, which is
+				# what the downstream summarizers expect (they read the
+				# FastQC_mqc-generalstats-fastqc-* columns). Current MultiQC (1.21 here)
+				# no longer writes that file - only multiqc_fastqc.txt - so the plain
+				# `mv` silently failed and rgi_bwt/shortbred then died on a missing
+				# <pipeline>_post-QC_report.tsv. Duke/UNC reports predate the change.
+				# This rebuilds the expected format from whichever file exists.
+				qc_report() {   # $1 = multiqc_data dir, $2 = destination tsv
+					local mdir=$1 dest=$2
+					if [[ -s ${mdir}/multiqc_general_stats.txt ]]; then
+						mv ${mdir}/multiqc_general_stats.txt ${dest}
+						return 0
+					fi
+					if [[ ! -s ${mdir}/multiqc_fastqc.txt ]]; then
+						error "No multiqc general-stats or fastqc table in ${mdir}. Exiting..."
+					fi
+					# awk, not python: `module load multiqc` shifts the python in scope and
+					# pandas is not guaranteed there (observed ModuleNotFoundError).
+					awk -F'\t' -v OFS='\t' '
+						NR==1 {
+							for (i = 1; i <= NF; i++) {
+								if ($i == "Sample")             s = i
+								if ($i == "avg_sequence_length") a = i
+								if ($i == "Total Sequences")     t = i
+							}
+							if (!s || !a || !t) {
+								print "missing expected FastQC columns" > "/dev/stderr"; exit 1
+							}
+							print "Sample", \
+							      "FastQC_mqc-generalstats-fastqc-avg_sequence_length", \
+							      "FastQC_mqc-generalstats-fastqc-total_sequences"
+							next
+						}
+						{ print $s, $a, $t; n++ }
+						END { printf "  wrote %d rows from multiqc_fastqc.txt\n", n > "/dev/stderr" }
+					' "${mdir}/multiqc_fastqc.txt" > "${dest}"
+					if [[ $? -ne 0 || ! -s ${dest} ]]; then
+						error "Could not build ${dest} from ${mdir}/multiqc_fastqc.txt. Exiting..."
+					fi
+				}
 
 				module_dir=0.1_pre_qc
 					if [[ -d ${module_dir}/multiqc_data ]]; then rm -r ${module_dir}/multiqc_data; rm ${module_dir}/multiqc_report.html; fi
 					multiqc ${module_dir}/ -o ${module_dir}/
 					if [[ $? -ne 0 ]]; then error "Something went wrong with the pre-qc report. Exiting..."; fi
-					mv ${module_dir}/multiqc_data/multiqc_general_stats.txt ${out}/${pipeline}_pre-QC_report.tsv
+					qc_report ${module_dir}/multiqc_data ${out}/${pipeline}_pre-QC_report.tsv
 
 				module_dir=0.2_deduplication
 					if [[ -d ${module_dir}/multiqc_data ]]; then rm -r ${module_dir}/multiqc_data; rm ${module_dir}/multiqc_report.html; fi
 					multiqc ${module_dir}/QC_report -o ${module_dir}/
 					if [[ $? -ne 0 ]]; then error "Something went wrong with the pre-qc report. Exiting..."; fi
-					mv ${module_dir}/multiqc_data/multiqc_general_stats.txt ${out}/${pipeline}_dedup_report.tsv
+					qc_report ${module_dir}/multiqc_data ${out}/${pipeline}_dedup_report.tsv
 
 				module_dir=0.3_sequence_trim
 					if [[ -d ${module_dir}/multiqc_data ]]; then rm -r ${module_dir}/multiqc_data; rm ${module_dir}/multiqc_report.html; fi
 					multiqc ${module_dir}/QC_report -o ${module_dir}/
 					if [[ $? -ne 0 ]]; then error "Something went wrong with the pre-qc report. Exiting..."; fi
-					mv ${module_dir}/multiqc_data/multiqc_general_stats.txt ${out}/${pipeline}_dedup_trim_report.tsv
+					qc_report ${module_dir}/multiqc_data ${out}/${pipeline}_dedup_trim_report.tsv
 
 				module_dir=0.4_host_decontamination
 					if [[ -d ${module_dir}/multiqc_data ]]; then rm -r ${module_dir}/multiqc_data; rm ${module_dir}/multiqc_report.html; fi
 					multiqc ${module_dir}/QC_report -o ${module_dir}/
 					if [[ $? -ne 0 ]]; then error "Something went wrong with the pre-qc report. Exiting..."; fi
-					mv ${module_dir}/multiqc_data/multiqc_general_stats.txt ${out}/${pipeline}_post-QC_report.tsv
+					qc_report ${module_dir}/multiqc_data ${out}/${pipeline}_post-QC_report.tsv
 
 				module unload multiqc
 				comment "COMPLETE :)"
