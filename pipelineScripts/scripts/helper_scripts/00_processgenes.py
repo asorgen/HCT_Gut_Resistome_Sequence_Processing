@@ -100,7 +100,9 @@ genes = pd.read_csv(genefile, header=None, names=["gene_id"], sep='\t')
 rgi = pd.read_csv(rgifile, sep='\t')
 
 # Create gene_id column keeping only the first substring from ORF_ID
-rgi['gene_id'] = rgi['ORF_ID'].str.split(' ', expand=True)[0]
+# (.str[0], not expand=True)[0]: expand=True on a header-only RGI table (0 hits) returns a frame
+# with no column 0 -> KeyError. Same result whenever RGI has hits. Fixed 2026-11-06 (Heston 39ST008).
+rgi['gene_id'] = rgi['ORF_ID'].astype(str).str.split(' ').str[0]
 
 # Filter rgi to only keep 'Best_Identities' >= 70% & 
 # 'Percentage Length of Reference Sequence' >= 50%
