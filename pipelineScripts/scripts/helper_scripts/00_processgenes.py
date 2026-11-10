@@ -127,6 +127,14 @@ amrfinder = pd.read_csv(amrfile, sep='\t')
 amrfinder = amrfinder[(amrfinder['% Identity to reference'] >= 70) &
                       (amrfinder['% Coverage of reference'] >= 50)]
 
+# One label per protein: AMRFinder can report one protein against two genes (e.g. a fused
+# vanR-C/vanT-C ORF), which breaks the reindex below. Keep the best hit by coverage, then
+# identity. No-op when every protein has one hit. Fixed 2026-11-06 (Heston 52ST062/52ST064).
+amrfinder = (amrfinder
+             .sort_values(['% Coverage of reference', '% Identity to reference'],
+                          ascending=False, kind='mergesort')
+             .drop_duplicates(subset='Protein id', keep='first'))
+
 # Keep only the selected columns
 amrfinder = amrfinder[['Protein id', 'Element symbol', 'Subclass',
                        'Element name','Closest reference accession']]
