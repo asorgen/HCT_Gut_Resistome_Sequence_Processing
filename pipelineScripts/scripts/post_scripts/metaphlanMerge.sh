@@ -60,7 +60,8 @@ echo "Output: $output" # ${out}/${pipeline}
 
 
 if [[ ! -d ${module_dir}/bowtie2_mapping ]]; then mkdir -p ${module_dir}/bowtie2_mapping; fi
-mv ${module_dir}/*_mapping.txt ${module_dir}/bowtie2_mapping
+# Mapping files may be bzip2-compressed (run_metaphlan_cohort.sh, 2026-11-10); move whichever exist
+for _m in ${module_dir}/*_mapping.txt ${module_dir}/*_mapping.txt.bz2; do [[ -e "$_m" ]] && mv "$_m" ${module_dir}/bowtie2_mapping/; done
 
 module purge
 module load metaphlan/4.2.2
