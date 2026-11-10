@@ -24,7 +24,9 @@ source(funcScript)
 
 
 # Relative abundance -----
-table <- read.table(rel_abun_file, skip = 1, header = T, sep = "\t")
+# check.names = FALSE: the default prefixes numeric-leading sample IDs with "X"
+# (every Heston ID, e.g. 01ST001 -> X01ST001) and turns hyphens into dots. Fixed 2026-11-10.
+table <- read.table(rel_abun_file, skip = 1, header = T, sep = "\t", check.names = FALSE)
 
 for (i in c("k", "p", "c", "o", "f", "g", "s", "t")) {
    if (i == 'k') {
