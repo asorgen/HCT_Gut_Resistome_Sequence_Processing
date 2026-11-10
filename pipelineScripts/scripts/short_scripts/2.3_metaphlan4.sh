@@ -132,6 +132,7 @@
 
 # Load environments --------------------------------------------------------------------------------------------------------
     module load metaphlan/4.2.2
+    [[ -n "$METAPHLAN4_INDEX" ]] || error "METAPHLAN4_INDEX not set in config - refusing to let MetaPhlAn pick a DB online"
     
 # Run functions ------------------------------------------------------------------------------------------------------------
 
@@ -144,7 +145,7 @@ STEP="MetaPhlAn4 Relative Abundance Profiling"
 
       if ! $output_exists; then
 
-        CMD="metaphlan $R1,$R2 --input_type fastq -t rel_ab_w_read_stats --force --db_dir $METAPHLAN4_DB --nproc $SLURM_CPUS_PER_TASK --output_file ${out}/${ID}_rel_abun_w_read_stats.txt --mapout ${out}/${ID}_mapping.txt --ignore_eukaryotes --ignore_archaea"
+        CMD="metaphlan $R1,$R2 --input_type fastq -t rel_ab_w_read_stats --force --db_dir $METAPHLAN4_DB --index $METAPHLAN4_INDEX --offline --nproc $SLURM_CPUS_PER_TASK --output_file ${out}/${ID}_rel_abun_w_read_stats.txt --mapout ${out}/${ID}_mapping.txt --ignore_eukaryotes --ignore_archaea"
         comment "$CMD"
         $CMD
         if [[ $? -ne 0 ]]; then error "Something went wrong! Exiting..."; fi
@@ -162,7 +163,7 @@ STEP="MetaPhlAn4 Relative Abundance Profiling"
 
 #       if ! $output_exists; then
 
-#         CMD="metaphlan $R1,$R2 --input_type fastq -t clade_profiles --force --db_dir $METAPHLAN4_DB --nproc $SLURM_CPUS_PER_TASK --output_file ${out}/${ID}_clade_profile.txt --mapout ${out}/${ID}_mapping.txt --ignore_eukaryotes --ignore_archaea"
+#         CMD="metaphlan $R1,$R2 --input_type fastq -t clade_profiles --force --db_dir $METAPHLAN4_DB --index $METAPHLAN4_INDEX --offline --nproc $SLURM_CPUS_PER_TASK --output_file ${out}/${ID}_clade_profile.txt --mapout ${out}/${ID}_mapping.txt --ignore_eukaryotes --ignore_archaea"
 #         echo -e $CMD
 #         $CMD
 #         if [[ $? -ne 0 ]]; then error "Something went wrong! Exiting..."; fi
