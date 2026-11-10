@@ -2,8 +2,9 @@
 #SBATCH --partition=Orion
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=64GB
-#SBATCH --time=01:00:00
+#SBATCH --mem=96GB
+#SBATCH --time=02:00:00
+# 96GB: MaxRSS sat at 61-64 GB against the old 64 GB request (Duke run + 2026-11-10 smoke test)
 
 # Standalone MetaPhlAn4 (module 2.3) submission for one short-read cohort.
 #
@@ -79,3 +80,10 @@ export moduleDir=2.3_metaphlan4   # relative to --chdir=${datasetDir}, as module
 
 cd "$datasetDir" || exit 1
 bash ${moduleScriptPath}/2.3_metaphlan4.sh
+rc=$?
+
+# --mapout is ~180 MB/sample uncompressed (~200 GB for 1,110 samples on 94-97% full
+# filesystems). Keep it (StrainPhlAn input) but bzip2 it; MetaPhlAn reads .bz2 natively.
+map=${moduleDir}/${ID}_mapping.txt
+if [[ $rc -eq 0 && -s $map ]]; then bzip2 -f "$map"; fi
+exit $rc
