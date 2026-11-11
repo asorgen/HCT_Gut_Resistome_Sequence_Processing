@@ -97,6 +97,12 @@
 
             if [[ ! -d ${moduleDir}/COMPLETE ]]; then mkdir ${moduleDir}/COMPLETE; fi
 
+    # Zero MAGs: 3.2 found no bin passing the cutoffs and wrote NO_BINS/<ID>. Nothing to do.
+    if [[ -e ${refinedbinDir}/NO_BINS/${ID} ]]; then
+        comment "No refined bins for ${ID} (${refinedbinDir}/NO_BINS/${ID}) - skipping, marked COMPLETE"
+        touch ${moduleDir}/COMPLETE/${ID}; exit 0
+    fi
+
     H2 "[ Start ]"
     /bin/date
     SECONDS=0

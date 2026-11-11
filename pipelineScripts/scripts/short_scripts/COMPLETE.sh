@@ -157,8 +157,12 @@ if $run_eval; then
     Intermediate_files+=(${evaluationDir}/${ID}_draft_assembly.fasta)
 fi
 
+# Zero-MAG samples (3.2 wrote NO_BINS/<ID>) have no bin outputs to check
+no_bins=false
+if [[ -e ${refinedbinDir}/NO_BINS/${ID} ]]; then no_bins=true; comment "${ID} has no refined bins (NO_BINS) - skipping MAG output checks"; fi
+
 # 3.3_reassemble_bins (full mode)
-if $run_reassem; then
+if $run_reassem && ! $no_bins; then
     STEP="Bin Reassembly"
     step_completion "${reassemDir}/${ID}/reassembled_bins.stats"
 fi
@@ -170,7 +174,7 @@ if $run_amr_aa_asm; then
 fi
 
 # 5.6_AA_amr_bins (full mode)
-if $run_amr_aa_bin; then
+if $run_amr_aa_bin && ! $no_bins; then
     STEP="AA AMR from MAGs"
     step_completion "${datasetDir}/5.6_AA_amr_bins/${ID}/${ID}_gene_annotations.tsv"
 fi

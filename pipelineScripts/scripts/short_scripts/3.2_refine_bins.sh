@@ -95,10 +95,45 @@
     Intermediate_files=()
 
 
+    # Zero MAGs is a valid outcome, not a failure. When no bin from any binner or
+    # refinement set passes -c/-x, metaWRAP leaves binsO empty, then runs CheckM on
+    # it and exits non-zero ("No bins found"), with no metawrap_<c>_<x>_bins.stats.
+    # Before 2026-11-11 that failed the job, and the throttled driver resubmitted
+    # those samples every round. Now: write NO_BINS/<ID> (best bin for the record),
+    # mark COMPLETE, and let 3.3 / 4.x / 5.2 / 5.6 / COMPLETE.sh skip the sample.
+    # Only fires when every binner and refinement set was CheckM-scored, so a
+    # partial or killed run still errors as before.
+    zero_bin_check() {
+        local s n_pass
+        for s in binsA binsB binsC binsAB binsAC binsBC binsABC binsM; do
+            [[ -e ${out}/${s}.stats ]] || return 1
+        done
+        [[ -n "$(ls -A ${out}/binsO 2>/dev/null)" ]] && return 1
+        n_pass=$(awk -v com="$c" -v con="$x" '$1 != "bin" && $2 > com && $3 < con' ${out}/bins*.stats | wc -l)
+        [[ $n_pass -eq 0 ]] || return 1
+
+        mkdir -p ${moduleDir}/NO_BINS
+        {
+            echo -e "# ${ID}: no bin >${c}% complete and <${x}% contaminated ($(date +%F))"
+            echo -e "# best bin per set, by completeness:"
+            head -1 ${out}/binsA.stats
+            for s in binsA binsB binsC binsAB binsAC binsBC binsABC; do
+                awk 'NR > 1' ${out}/${s}.stats | sort -t$'\t' -k2,2gr | head -1
+            done
+        } > ${moduleDir}/NO_BINS/${ID}
+        H2 "No bins passed refinement"
+        cat ${moduleDir}/NO_BINS/${ID}
+        comment "Zero MAGs for ${ID}: wrote ${moduleDir}/NO_BINS/${ID}, marking COMPLETE"
+        touch ${moduleDir}/COMPLETE/${ID}
+        exit 0
+    }
+
 STEP="Bin Refinement"
     H1 "Bin refinement (>${c}% completeness, <${x}% contamination)"
 
     outputFile=${out}/metawrap_${c}_${x}_bins.stats
+    # A previous attempt already scored everything and found nothing: don't rerun metaWRAP
+    if [[ ! -s "$outputFile" ]]; then zero_bin_check; fi
     if [[ -s "$outputFile" ]]; then
         comment "Output file already found. Skipping this command..."
     else
@@ -127,6 +162,8 @@ STEP="Bin Refinement"
         if [[ -s "$outputFile" ]]; then
             H2 "Yipee! $STEP Complete"
             comment "$STEP: $(elapsed_time "$duration")"
+        else
+            zero_bin_check   # exits 0 if this is a genuine zero-MAG sample
         fi
     fi
     step_completion "${outputFile}"
