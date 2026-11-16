@@ -20,6 +20,11 @@
 #                 this number (default 0, i.e. fully drained)
 #
 #   Honours SAMPLE_LIST_OVERRIDE if exported.
+#   MAX_STALL_ROUNDS (default 5): stop after this many consecutive rounds in which
+#   no module wrote a new COMPLETE flag. Guards against samples that fail every
+#   time: once they are all that's left, each round fails in seconds and the
+#   driver would otherwise resubmit them once per POLL forever (2026-11-14/15:
+#   39ST008 + 83ST011 failed 3.1 ~2,330 times in 21 h before this cap existed).
 #
 # Safe to interrupt and restart: progress lives in the per-module COMPLETE flags,
 # so a restart picks up wherever it left off.
@@ -33,6 +38,7 @@ CONFIG_ARG=${1:?Usage: run_short_pipeline_throttled.sh <config> [batch_size] [dr
 BATCH_SIZE=${2:-25}
 DRAIN_TO=${3:-0}
 POLL=60
+MAX_STALL_ROUNDS=${MAX_STALL_ROUNDS:-5}
 
 cd "$PIPELINE_ROOT" || exit 1
 
@@ -69,6 +75,13 @@ done_count() {
     ls "${datasetDir}/COMPLETE" 2>/dev/null | grep -vc '^logs$' || true
 }
 
+# Progress across ALL modules: total per-module COMPLETE flags. done_count only
+# moves when a sample's whole chain finishes (and is stale when a later phase is
+# added to samples that already have a top-level flag), so it can't detect a stall.
+module_flag_count() {
+    find "${datasetDir}" -mindepth 3 -maxdepth 3 -path '*/COMPLETE/*' -type f 2>/dev/null | wc -l
+}
+
 # Record the PID both in the log and in a pidfile, so a driver launched with
 # nohup days ago can still be found and stopped without having kept the PID.
 #   pgrep -af run_short_pipeline_throttled.sh
@@ -92,9 +105,26 @@ echo "  driver log : ${DRIVER_LOG}"       | tee -a "$DRIVER_LOG"
 echo "  pidfile    : ${PIDFILE}"          | tee -a "$DRIVER_LOG"
 
 round=0
+stall=0
+last_flags=-1
 while true; do
     # Wait for the previous batch to drain before submitting more.
     while [[ $(inflight) -gt $DRAIN_TO ]]; do sleep "$POLL"; done
+
+    # Stall guard (see MAX_STALL_ROUNDS above)
+    flags=$(module_flag_count)
+    if [[ $flags -eq $last_flags ]]; then stall=$((stall + 1)); else stall=0; fi
+    last_flags=$flags
+    if [[ $stall -ge $MAX_STALL_ROUNDS ]]; then
+        echo "[$(date '+%F %T')] STALLED: ${stall} rounds with no new module COMPLETE flag (${flags} flags) - stopping." \
+            | tee -a "$DRIVER_LOG"
+        echo "    Last round resubmitted:" | tee -a "$DRIVER_LOG"
+        # wrapper prints "[ Log file ] -> <dataset>/<module>/logs/<ID>.<jobid>.log"
+        echo "${out:-}" | sed -nE 's#^\[ Log file \] -> [^/]+/([^/]+)/logs/([^.]+)\..*#\2  \1#p' \
+            | sort -u | sed 's/^/      /' | tee -a "$DRIVER_LOG"
+        echo "    These fail every time - check their logs before restarting the driver." | tee -a "$DRIVER_LOG"
+        break
+    fi
 
     before=$(done_count)
     round=$((round + 1))

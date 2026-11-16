@@ -127,6 +127,25 @@ echo -e "    9. Splits contigs into bins (split_concoct_bins.py)."
 
             if [[ ! -d ${moduleDir}/COMPLETE ]]; then mkdir -p $moduleDir/COMPLETE; fi
 
+    # Zero MAGs, decided before binning: if the contigs metaWRAP would bin (>= 1.5 kb)
+    # total under MIN_BIN_ASM_BP, no binner can return a bin (MaxBin2 can't even
+    # start) and metaWRAP exits non-zero every time. 39ST008 (43 kb) and 83ST011
+    # (68 kb) failed ~1,165 times each this way on 2026-11-14/15; the next smallest
+    # Heston assembly is 980 kb. Write the same NO_BINS/<ID> marker as 3.2 so 3.2 ->
+    # 5.6 and COMPLETE.sh skip the sample.
+    MIN_BIN_ASM_BP=${MIN_BIN_ASM_BP:-500000}
+    asm=${evaluationDir}/${ID}_final_assembly.fasta
+    if [[ -s $asm ]]; then
+        bin_bp=$(awk '/^>/{if(l>=1500)t+=l; l=0; next}{l+=length($0)}END{if(l>=1500)t+=l; print t+0}' $asm)
+        if [[ $bin_bp -lt $MIN_BIN_ASM_BP ]]; then
+            mkdir -p ${refinedbinDir}/NO_BINS
+            echo -e "# ${ID}: not binned - contigs >= 1.5 kb total ${bin_bp} bp (< ${MIN_BIN_ASM_BP}) ($(date +%F), 3.1_binning)" \
+                > ${refinedbinDir}/NO_BINS/${ID}
+            comment "Assembly too small to bin (${bin_bp} bp in contigs >= 1.5 kb) - wrote ${refinedbinDir}/NO_BINS/${ID}, marking COMPLETE"
+            touch ${moduleDir}/COMPLETE/${ID}; exit 0
+        fi
+    fi
+
     H2 "[ Start ]"
     /bin/date
     SECONDS=0

@@ -88,6 +88,12 @@
             echo -e "${out}/metawrap_${c}_${x}_bins"
             if [[ ! -d ${moduleDir}/COMPLETE ]]; then mkdir ${moduleDir}/COMPLETE; fi
 
+    # 3.1 already declared this sample zero-MAG (assembly too small to bin)
+    if [[ -e ${moduleDir}/NO_BINS/${ID} ]]; then
+        comment "No bins for ${ID} (${moduleDir}/NO_BINS/${ID}) - skipping, marked COMPLETE"
+        touch ${moduleDir}/COMPLETE/${ID}; exit 0
+    fi
+
     H2 "[ Start ]"
     /bin/date
     SECONDS=0
