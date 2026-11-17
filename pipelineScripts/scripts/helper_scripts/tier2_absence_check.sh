@@ -212,16 +212,26 @@ with open(out, "w", newline="") as fo:
         w.writerow([r[c] for c in rows[0]] + list(res[i]))
         n_written += 1
 
-present = sum(1 for v in res.values() if float(v[0]) >= 0.5 and float(v[1]) >= 0.95)
+def is_present(v):
+    return float(v[0]) >= 0.5 and float(v[1]) >= 0.95
+
+present = sum(1 for v in res.values() if is_present(v))
 print(f"\n{out}: {n_written} of {len(rows)} candidates checked")
-print(f"  gene already present (cov >= 0.5, id >= 0.95): {present}  <- these are NOT absences")
+print(f"  gene present (cov >= 0.5, id >= 0.95): {present} candidate samples")
+# A candidate is any gene-free sample in a tier-2 trajectory, not only the event's chosen "before",
+# so most of these are samples that simply carry the gene and were never the comparison point. The
+# count that costs an event is the chosen "before" flipping to present - 4.15 reports that, not this.
+same = sum(1 for i, v in res.items() if is_present(v)
+           and re.sub(r"\([0-9.]+\)$", "", rows[i]["Gene"]) in (v[3] or ""))
+print(f"    of those, present under the same RGI name as the query: {same} "
+      f"(gene simply there; not a naming artefact), under another name: {present - same}")
 print(f"  gene absent: {n_written - present}")
 if n_written < len(rows):
     print(f"  {len(rows) - n_written} candidates had no usable query ORF (see WARNs above); 4.15 keeps its own test for them")
 # Strip the trailing "(identity)" only - gene names contain parentheses, e.g. tet(X1), aad(6).
-nm = sorted({re.sub(r"\([0-9.]+\)$", "", x) for v in res.values()
-             if float(v[0]) >= 0.5 and float(v[1]) >= 0.95 and v[3]
-             for x in v[3].replace("; ", ", ").split(", ")})
-print(f"  RGI names found at the present sites (sister alleles): {', '.join(nm[:25])}")
+nm = sorted({re.sub(r"\([0-9.]+\)$", "", x) for i, v in res.items() if is_present(v) and v[3]
+             for x in v[3].replace("; ", ", ").split(", ")
+             if re.sub(r"\([0-9.]+\)$", "", x) != rows[i]["Gene"]})
+print(f"  RGI names at a present site that differ from the query gene: {', '.join(nm[:25])}")
 PYEOF
 echo "done"
